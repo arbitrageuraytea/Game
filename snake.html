@@ -200,51 +200,6 @@
   }
   .btn-small:active { transform: translateY(3px); box-shadow: 0 1px 0 #111120; }
 
-  /* ── D-pad ── */
-  .dpad-wrap {
-    display: flex;
-    justify-content: center;
-  }
-  .dpad {
-    display: grid;
-    grid-template-areas:
-      ". up ."
-      "left mid right"
-      ". down .";
-    grid-template-columns: repeat(3, clamp(52px, 13vw, 72px));
-    grid-template-rows:    repeat(3, clamp(52px, 13vw, 72px));
-    gap: 3px;
-  }
-  .dp {
-    background: linear-gradient(160deg, #484860, #222232);
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: rgba(255,255,255,0.65);
-    font-size: clamp(16px, 4vw, 22px);
-    box-shadow: 0 4px 0 #111120, inset 0 1px 0 rgba(255,255,255,0.08);
-    transition: transform 0.06s, box-shadow 0.06s;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-  .dp:active, .dp.pressed {
-    transform: translateY(3px);
-    box-shadow: 0 1px 0 #111120;
-    background: linear-gradient(160deg, #333348, #1a1a28);
-  }
-  .dp-up    { grid-area: up;    border-radius: 10px 10px 4px 4px; }
-  .dp-down  { grid-area: down;  border-radius: 4px 4px 10px 10px; }
-  .dp-left  { grid-area: left;  border-radius: 10px 4px 4px 10px; }
-  .dp-right { grid-area: right; border-radius: 4px 10px 10px 4px; }
-  .dp-mid   { grid-area: mid;   border-radius: 6px;
-              background: linear-gradient(160deg, #5a5a72, #333348);
-              font-size: clamp(11px, 2.5vw, 14px);
-              letter-spacing: 0.5px;
-              font-family: 'VT323', monospace;
-              color: rgba(255,255,255,0.7); }
-
   /* ── Hint ── */
   .hint {
     text-align: center;
@@ -295,18 +250,7 @@
     <button class="btn-small" id="btnSpeed">SPEED</button>
   </div>
 
-  <!-- D-pad -->
-  <div class="dpad-wrap">
-    <div class="dpad">
-      <button class="dp dp-up"    id="dpUp">▲</button>
-      <button class="dp dp-left"  id="dpLeft">◀</button>
-      <button class="dp dp-mid"   id="dpOk">OK</button>
-      <button class="dp dp-right" id="dpRight">▶</button>
-      <button class="dp dp-down"  id="dpDown">▼</button>
-    </div>
-  </div>
-
-  <div class="hint">Arrow Keys / WASD · Enter to Start</div>
+  <div class="hint">Arrow Keys / WASD · Enter to Start · Swipe to Play</div>
 </div>
 
 <script>
@@ -332,7 +276,7 @@
 
   const STEP_MS = [300, 220, 160, 110, 70];
 
-  let snake, prevSnake, dir, nextDir, food;
+  let snake, prevSnake, dir, food;
   let score = 0, foodEaten = 0, hiScore = 0;
   let running = false, paused = false, gameOver = false;
   let speed = 1;
@@ -362,7 +306,7 @@
     const mx = Math.floor(COLS / 2), my = Math.floor(ROWS / 2);
     snake     = [{ x: mx, y: my }, { x: mx-1, y: my }, { x: mx-2, y: my }];
     prevSnake = cloneSnake(snake);
-    dir = nextDir = { x: 1, y: 0 };
+    dir = { x: 1, y: 0 };
     score = foodEaten = interpT = 0;
     updateScore();
     placeFood();
@@ -473,14 +417,119 @@
     rafId = requestAnimationFrame(loop);
   }
 
-  /* ── Direction ── */
+  /* ── Direction — applied immediately, one queued buffer ── */
+  let dirQueue = [];   // holds at most 1 pending direction change
+
   function setDir(dx, dy) {
     if (!running || paused) return;
-    if (dx ===  1 && dir.x === -1) return;
-    if (dx === -1 && dir.x ===  1) return;
-    if (dy ===  1 && dir.y === -1) return;
-    if (dy === -1 && dir.y ===  1) return;
-    nextDir = { x: dx, y: dy };
+    // Use latest committed direction to validate (not the buffered one)
+    const base = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
+    if (dx ===  1 && base.x === -1) return;
+    if (dx === -1 && base.x ===  1) return;
+    if (dy ===  1 && base.y === -1) return;
+    if (dy === -1 && base.y ===  1) return;
+    // Replace any pending queue entry — only buffer one turn ahead
+    dirQueue = [{ x: dx, y: dy }];
+  }
+
+  /* ── Logic step — consume from queue ── */
+  function step() {
+    if (dirQueue.length) dir = dirQueue.shift();
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) { endGame(); return; }
+    if (snake.some(s => s.x === head.x && s.y === head.y))             { endGame(); return; }
+
+    prevSnake = cloneSnake(snake);
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+      score += speed * 10; foodEaten++;
+      updateScore(); placeFood();
+      if (foodEaten % 5 === 0 && speed < 5) { speed++; updateSpeedDots(); }
+      prevSnake.push(prevSnake[prevSnake.length - 1]);
+    } else {
+      snake.pop();
+    }
+  }
+
+  /* ── rAF loop ── */
+  function loop(ts) {
+    if (!running) return;
+    rafId = requestAnimationFrame(loop);
+    if (paused) return;
+    const elapsed = ts - lastStepTs;
+    const ms = stepMs();
+    interpT = Math.min(elapsed / ms, 1);
+    if (elapsed >= ms) { step(); if (!running) return; lastStepTs = ts; interpT = 0; }
+    draw(interpT);
+  }
+
+  /* ── Draw ── */
+  function draw(t = 1) {
+    ctx.fillStyle = C_BG;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = C_LIGHT;
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        ctx.fillRect(c * CW + CW/2 - 0.5, r * CH + CH/2 - 0.5, 1.5, 1.5);
+
+    const fx = food.x * CW, fy = food.y * CH;
+    ctx.fillStyle = C_DARK;
+    ctx.fillRect(fx+3, fy+1, CW-6, CH-2);
+    ctx.fillRect(fx+1, fy+3, CW-2, CH-6);
+
+    for (let i = 0; i < snake.length; i++) {
+      const cur  = snake[i];
+      const prev = prevSnake[i] || cur;
+      const px   = (prev.x + (cur.x - prev.x) * t) * CW;
+      const py   = (prev.y + (cur.y - prev.y) * t) * CH;
+      if (i === 0) {
+        ctx.fillStyle = C_DARK;
+        ctx.fillRect(px+1, py+1, CW-2, CH-2);
+        ctx.fillStyle = C_BG;
+        if      (dir.x ===  1) { ctx.fillRect(px+CW-5,py+3,3,3); ctx.fillRect(px+CW-5,py+CH-6,3,3); }
+        else if (dir.x === -1) { ctx.fillRect(px+2,py+3,3,3);    ctx.fillRect(px+2,py+CH-6,3,3); }
+        else if (dir.y === -1) { ctx.fillRect(px+3,py+2,3,3);    ctx.fillRect(px+CW-6,py+2,3,3); }
+        else                   { ctx.fillRect(px+3,py+CH-5,3,3); ctx.fillRect(px+CW-6,py+CH-5,3,3); }
+      } else {
+        ctx.fillStyle = i % 2 === 0 ? C_DARK : C_MID;
+        ctx.fillRect(px+1, py+1, CW-2, CH-2);
+      }
+    }
+  }
+
+  /* ── End ── */
+  function endGame() {
+    running = false; gameOver = true;
+    cancelAnimationFrame(rafId);
+    let f = 0;
+    const fi = setInterval(() => {
+      ctx.fillStyle = f++ % 2 === 0 ? C_DARK : C_BG;
+      ctx.fillRect(0, 0, W, H);
+      if (f >= 6) { clearInterval(fi); draw(1); showOverlay('GAME OVER', 'SCORE: ' + score, 'TAP TO PLAY AGAIN'); }
+    }, 100);
+  }
+
+  /* ── Overlays ── */
+  function showOverlay(title, sub, msg) {
+    const ov = document.getElementById('overlay');
+    ov.classList.remove('hidden');
+    ov.querySelector('.overlay-title').textContent = title;
+    document.getElementById('overlayMsg').textContent = msg;
+    const sc = document.getElementById('overlayScore');
+    if (sub) { sc.style.display = 'block'; sc.textContent = sub; } else { sc.style.display = 'none'; }
+  }
+  function hideOverlay() { document.getElementById('overlay').classList.add('hidden'); }
+
+  /* ── Start ── */
+  function startGame() {
+    cancelAnimationFrame(rafId);
+    init(); hideOverlay();
+    dirQueue = [];
+    running = true; speed = 1;
+    updateSpeedDots();
+    lastStepTs = performance.now();
+    rafId = requestAnimationFrame(loop);
   }
 
   /* ── Keyboard ── */
@@ -499,37 +548,36 @@
   function togglePause() {
     if (!running || gameOver) return;
     paused = !paused;
-    if (paused) showOverlay('PAUSED', null, 'TAP OK'); else hideOverlay();
+    if (paused) showOverlay('PAUSED', null, 'TAP TO RESUME'); else hideOverlay();
   }
 
-  /* ── D-pad buttons (touch + click) ── */
-  function bindBtn(id, fn) {
-    const el = document.getElementById(id);
-    // touchstart fires immediately, no 300ms delay
-    el.addEventListener('touchstart', e => { e.preventDefault(); fn(); }, { passive: false });
-    el.addEventListener('mousedown',  e => { e.preventDefault(); fn(); });
-  }
+  /* ── Touch on canvas: tap = start/pause, swipe = steer ── */
+  let touchStart = null;
+  const SWIPE_THRESHOLD = 18; // px on screen
 
-  bindBtn('dpUp',    () => setDir(0, -1));
-  bindBtn('dpDown',  () => setDir(0,  1));
-  bindBtn('dpLeft',  () => setDir(-1, 0));
-  bindBtn('dpRight', () => setDir( 1, 0));
-  bindBtn('dpOk',    () => { if (!running || gameOver) startGame(); else togglePause(); });
-
-  /* ── Swipe detection on canvas ── */
-  let swipeStart = null;
   canvas.addEventListener('touchstart', e => {
-    swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }, { passive: true });
+    e.preventDefault();
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  }, { passive: false });
+
   canvas.addEventListener('touchend', e => {
-    if (!swipeStart) return;
-    const dx = e.changedTouches[0].clientX - swipeStart.x;
-    const dy = e.changedTouches[0].clientY - swipeStart.y;
-    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // tap, not swipe
-    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
-    else                              setDir(0, dy > 0 ? 1 : -1);
-    swipeStart = null;
-  }, { passive: true });
+    e.preventDefault();
+    if (!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.x;
+    const dy = e.changedTouches[0].clientY - touchStart.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    touchStart = null;
+
+    if (dist < SWIPE_THRESHOLD) {
+      // Tap — start or pause
+      if (!running || gameOver) startGame();
+      else togglePause();
+    } else {
+      // Swipe — steer immediately
+      if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
+      else                              setDir(0, dy > 0 ? 1 : -1);
+    }
+  }, { passive: false });
 
   /* ── Top buttons ── */
   document.getElementById('btnPause').addEventListener('click', togglePause);
