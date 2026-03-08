@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Snake — Nokia 3310</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
@@ -17,19 +17,12 @@
     --screen-dark: #0f380f;
     --screen-light:#9bbc0f;
     --screen-mid:  #306230;
+  }
 
-    /* ── Layout math ──────────────────────────────────────────
-       phone-width  = 380px
-       phone-pad    = 22px each side  → inner = 336px
-       bezel-pad    = 12px each side  → screen-inner = 312px
-       screen-inner-pad = 6px each side → canvas = 300px wide
-       ──────────────────────────────────────────────────────── */
-    --phone-w: 380px;
-    --phone-px: 22px;
-    --bezel-px: 12px;
-    --screen-px: 6px;
-    --canvas-w: 300px;   /* phone-w - 2*(phone-px+bezel-px+screen-px) = 380-2*40 = 300 */
-    --canvas-h: 260px;
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
   }
 
   body {
@@ -39,18 +32,17 @@
     align-items: center;
     min-height: 100vh;
     font-family: 'VT323', monospace;
-    overflow: hidden;
     background-image:
       radial-gradient(ellipse at 20% 50%, rgba(26,26,80,0.8) 0%, transparent 60%),
       radial-gradient(ellipse at 80% 20%, rgba(10,10,50,0.6) 0%, transparent 50%);
   }
 
-  /* ── Phone shell ── */
+  /* ── Phone shell — fluid width ── */
   .phone {
-    width: var(--phone-w);
+    width: min(440px, 96vw);
     background: linear-gradient(160deg, var(--nokia-light) 0%, var(--nokia-body) 40%, var(--nokia-dark) 100%);
-    border-radius: 36px 36px 50px 50px;
-    padding: 24px var(--phone-px) 32px;
+    border-radius: clamp(20px, 5vw, 40px) clamp(20px, 5vw, 40px) clamp(28px, 7vw, 52px) clamp(28px, 7vw, 52px);
+    padding: clamp(14px, 3vw, 26px) clamp(14px, 3.5vw, 24px) clamp(20px, 4vw, 34px);
     box-shadow:
       0 0 0 2px #222230,
       0 24px 70px rgba(0,0,0,0.85),
@@ -58,56 +50,55 @@
       inset 0 -2px 4px rgba(0,0,0,0.5);
     position: relative;
     user-select: none;
+    -webkit-user-select: none;
   }
 
   .phone::before {
     content: '';
     position: absolute;
-    top: 12px; left: 14px; right: 14px;
-    height: 38%;
+    top: 10px; left: 12px; right: 12px;
+    height: 35%;
     background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 100%);
     border-radius: 24px 24px 0 0;
     pointer-events: none;
   }
 
-  /* ── Nokia brand ── */
+  /* ── Brand ── */
   .brand {
     text-align: center;
     color: rgba(255,255,255,0.25);
     font-family: 'Share Tech Mono', monospace;
-    font-size: 12px;
+    font-size: clamp(9px, 2vw, 13px);
     letter-spacing: 7px;
     text-transform: uppercase;
-    margin-bottom: 14px;
-    padding-top: 4px;
+    margin-bottom: clamp(8px, 2vw, 14px);
+    padding-top: 2px;
   }
 
-  /* ── Screen bezel (dark surround) ── */
+  /* ── Screen bezel ── */
   .screen-bezel {
     background: #080810;
     border-radius: 10px;
-    padding: var(--bezel-px);
+    padding: clamp(8px, 2vw, 13px);
     box-shadow:
       inset 0 3px 10px rgba(0,0,0,0.95),
       inset 0 0 0 1px rgba(0,0,0,0.6),
       0 1px 0 rgba(255,255,255,0.05);
-    margin-bottom: 22px;
+    margin-bottom: clamp(14px, 3vw, 22px);
   }
 
-  /* ── Green screen area ── */
+  /* ── Green screen ── */
   .screen-inner {
     background: var(--screen-bg);
     border-radius: 5px;
-    padding: var(--screen-px);
+    padding: 6px;
     position: relative;
+    overflow: hidden;
     box-shadow:
       inset 0 0 24px rgba(0,0,0,0.2),
       0 0 12px rgba(139,172,15,0.35);
-    /* Prevent any overflow */
-    overflow: hidden;
   }
 
-  /* scanlines */
   .screen-inner::after {
     content: '';
     position: absolute;
@@ -122,45 +113,42 @@
     z-index: 5;
   }
 
-  /* ── HUD row ── */
+  /* ── HUD ── */
   .hud {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 5px;
-    padding: 0 3px;
+    margin-bottom: 4px;
+    padding: 0 2px;
   }
-
   .hud-text {
     font-family: 'VT323', monospace;
-    font-size: 17px;
+    font-size: clamp(14px, 3.5vw, 18px);
     color: var(--screen-dark);
     line-height: 1;
   }
-
   .speed-dots { display: flex; gap: 4px; align-items: center; }
-  .dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--screen-dark);
-    opacity: 0.25;
-  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--screen-dark); opacity: 0.25; }
   .dot.active { opacity: 1; }
 
-  /* ── Canvas ── */
+  /* ── Canvas — fills available width ── */
+  .canvas-wrap {
+    position: relative;
+    line-height: 0;
+    width: 100%;
+  }
   canvas {
     display: block;
-    width: var(--canvas-w);
-    height: var(--canvas-h);
+    width: 100%;
+    height: auto;
     image-rendering: pixelated;
+    image-rendering: crisp-edges;
   }
 
   /* ── Overlay ── */
   .overlay {
     position: absolute;
-    /* sit inside screen-inner's padding box, above the canvas */
-    top: var(--screen-px); left: var(--screen-px);
-    right: var(--screen-px); bottom: var(--screen-px);
+    inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -168,66 +156,107 @@
     background: var(--screen-bg);
     border-radius: 3px;
     z-index: 10;
-    gap: 8px;
+    gap: 6px;
   }
-
   .overlay.hidden { display: none; }
-
   .overlay-title {
     font-family: 'VT323', monospace;
-    font-size: 42px;
+    font-size: clamp(30px, 8vw, 48px);
     color: var(--screen-dark);
     line-height: 1;
     letter-spacing: 3px;
   }
-
   .overlay-sub {
     font-family: 'VT323', monospace;
-    font-size: 17px;
+    font-size: clamp(13px, 3.5vw, 18px);
     color: var(--screen-mid);
     text-align: center;
     line-height: 1.3;
   }
-
   .blink { animation: blink 1s step-end infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-  /* ── Buttons ── */
+  /* ── Top control row (Pause + Speed) ── */
   .controls-top {
     display: flex;
     justify-content: center;
-    gap: 18px;
+    gap: clamp(10px, 3vw, 20px);
+    margin-bottom: clamp(12px, 3vw, 20px);
   }
-
   .btn-small {
     background: linear-gradient(160deg, #555568, #2a2a38);
     color: rgba(255,255,255,0.75);
     border: none;
     border-radius: 10px;
-    padding: 10px 32px;
+    padding: clamp(7px, 1.5vw, 11px) clamp(18px, 5vw, 34px);
     font-family: 'VT323', monospace;
-    font-size: 17px;
+    font-size: clamp(14px, 3.5vw, 18px);
     cursor: pointer;
     box-shadow: 0 4px 0 #111120, inset 0 1px 0 rgba(255,255,255,0.12);
     transition: transform 0.08s, box-shadow 0.08s;
     letter-spacing: 1px;
     text-transform: uppercase;
+    -webkit-tap-highlight-color: transparent;
   }
+  .btn-small:active { transform: translateY(3px); box-shadow: 0 1px 0 #111120; }
 
-  .btn-small:active {
+  /* ── D-pad ── */
+  .dpad-wrap {
+    display: flex;
+    justify-content: center;
+  }
+  .dpad {
+    display: grid;
+    grid-template-areas:
+      ". up ."
+      "left mid right"
+      ". down .";
+    grid-template-columns: repeat(3, clamp(52px, 13vw, 72px));
+    grid-template-rows:    repeat(3, clamp(52px, 13vw, 72px));
+    gap: 3px;
+  }
+  .dp {
+    background: linear-gradient(160deg, #484860, #222232);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.65);
+    font-size: clamp(16px, 4vw, 22px);
+    box-shadow: 0 4px 0 #111120, inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: transform 0.06s, box-shadow 0.06s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .dp:active, .dp.pressed {
     transform: translateY(3px);
     box-shadow: 0 1px 0 #111120;
+    background: linear-gradient(160deg, #333348, #1a1a28);
   }
+  .dp-up    { grid-area: up;    border-radius: 10px 10px 4px 4px; }
+  .dp-down  { grid-area: down;  border-radius: 4px 4px 10px 10px; }
+  .dp-left  { grid-area: left;  border-radius: 10px 4px 4px 10px; }
+  .dp-right { grid-area: right; border-radius: 4px 10px 10px 4px; }
+  .dp-mid   { grid-area: mid;   border-radius: 6px;
+              background: linear-gradient(160deg, #5a5a72, #333348);
+              font-size: clamp(11px, 2.5vw, 14px);
+              letter-spacing: 0.5px;
+              font-family: 'VT323', monospace;
+              color: rgba(255,255,255,0.7); }
 
+  /* ── Hint ── */
   .hint {
     text-align: center;
-    color: rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.12);
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
+    font-size: clamp(8px, 1.8vw, 10px);
     letter-spacing: 1.5px;
-    margin-top: 12px;
+    margin-top: clamp(8px, 2vw, 13px);
     text-transform: uppercase;
   }
+  /* Hide keyboard hint on touch devices */
+  @media (hover: none) { .hint { display: none; } }
 </style>
 </head>
 <body>
@@ -237,7 +266,6 @@
 
   <div class="screen-bezel">
     <div class="screen-inner">
-      <!-- HUD -->
       <div class="hud">
         <span class="hud-text">SCR: <span id="score">0</span></span>
         <div class="speed-dots">
@@ -249,117 +277,102 @@
         </div>
         <span class="hud-text">HI: <span id="hiscore">0</span></span>
       </div>
-
-      <!-- Canvas wrapper keeps overlay aligned to canvas -->
-      <div style="position:relative; line-height:0;">
+      <div class="canvas-wrap">
         <canvas id="gameCanvas"></canvas>
         <div class="overlay" id="overlay">
           <div class="overlay-title">SNAKE</div>
-          <div class="overlay-sub" style="color:var(--screen-dark); font-size:14px; letter-spacing:2px;">▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>
-          <div class="overlay-sub blink" id="overlayMsg">PRESS ENTER TO PLAY</div>
+          <div class="overlay-sub" style="color:var(--screen-dark); letter-spacing:2px;">▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>
+          <div class="overlay-sub blink" id="overlayMsg">TAP OK TO PLAY</div>
           <div class="overlay-sub" id="overlayScore" style="display:none;"></div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Pause / Speed -->
   <div class="controls-top">
     <button class="btn-small" id="btnPause">PAUSE</button>
     <button class="btn-small" id="btnSpeed">SPEED</button>
   </div>
 
-  <div class="hint">Arrow Keys / WASD &nbsp;·&nbsp; Enter to Start</div>
+  <!-- D-pad -->
+  <div class="dpad-wrap">
+    <div class="dpad">
+      <button class="dp dp-up"    id="dpUp">▲</button>
+      <button class="dp dp-left"  id="dpLeft">◀</button>
+      <button class="dp dp-mid"   id="dpOk">OK</button>
+      <button class="dp dp-right" id="dpRight">▶</button>
+      <button class="dp dp-down"  id="dpDown">▼</button>
+    </div>
+  </div>
+
+  <div class="hint">Arrow Keys / WASD · Enter to Start</div>
 </div>
 
 <script>
 (function () {
+  /* ── Canvas setup ── */
   const canvas = document.getElementById('gameCanvas');
   const ctx    = canvas.getContext('2d');
 
-  // --- Grid config ---
   const COLS = 25, ROWS = 20;
+  // Internal resolution — canvas CSS width is 100% of parent, height scales naturally
+  const W = 500, H = 400;
+  canvas.width  = W;
+  canvas.height = H;
+  // aspect ratio locked via CSS: width:100%; height:auto
 
-  // Match canvas pixel size to CSS display size exactly
-  // CSS vars: --canvas-w = 300, --canvas-h = 260
-  const CSSw = 300, CSSh = 260;
-  canvas.width  = CSSw;
-  canvas.height = CSSh;
-  // canvas CSS size is set in stylesheet via width/height vars
-
-  const CW = CSSw / COLS;  // 12
-  const CH = CSSh / ROWS;  // 13
+  const CW = W / COLS;   // 20px per cell
+  const CH = H / ROWS;   // 20px per cell
 
   const C_BG    = '#8bac0f';
   const C_DARK  = '#0f380f';
   const C_MID   = '#306230';
   const C_LIGHT = '#9bbc0f';
 
-  // speeds[i] = ms per grid step at speed level i+1
   const STEP_MS = [300, 220, 160, 110, 70];
 
-  let snake;       // array of {x,y} grid cells, index 0 = head
-  let prevSnake;   // snake positions at start of current step (for interpolation)
-  let dir, nextDir;
-  let food;
-  let score, foodEaten;
-  let hiScore  = 0;
-  let running  = false;
-  let paused   = false;
-  let gameOver = false;
-  let speed    = 1;  // 1–5
+  let snake, prevSnake, dir, nextDir, food;
+  let score = 0, foodEaten = 0, hiScore = 0;
+  let running = false, paused = false, gameOver = false;
+  let speed = 1;
+  let rafId = null, lastStepTs = 0, interpT = 0;
 
-  // rAF state
-  let rafId      = null;
-  let lastStepTs = 0;   // timestamp of last logical step
-  let interpT    = 0;   // 0..1 fraction through current step
-
-  // --- Helpers ---
-  function stepMs() { return STEP_MS[speed - 1]; }
+  /* ── Helpers ── */
+  const stepMs     = () => STEP_MS[speed - 1];
+  const cloneSnake = s  => s.map(c => ({ ...c }));
 
   function updateScore() {
     document.getElementById('score').textContent = score;
-    if (score > hiScore) {
-      hiScore = score;
-      document.getElementById('hiscore').textContent = hiScore;
-    }
+    if (score > hiScore) { hiScore = score; document.getElementById('hiscore').textContent = hiScore; }
   }
-
   function updateSpeedDots() {
     for (let i = 1; i <= 5; i++)
       document.getElementById('d' + i).classList.toggle('active', i <= speed);
   }
-
   function placeFood() {
-    let pos;
-    do {
-      pos = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
-    } while (snake.some(s => s.x === pos.x && s.y === pos.y));
-    food = pos;
+    let p;
+    do { p = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) }; }
+    while (snake.some(s => s.x === p.x && s.y === p.y));
+    food = p;
   }
 
-  function cloneSnake(s) { return s.map(c => ({ ...c })); }
-
-  // --- Init ---
+  /* ── Init ── */
   function init() {
     const mx = Math.floor(COLS / 2), my = Math.floor(ROWS / 2);
-    snake     = [{ x: mx, y: my }, { x: mx - 1, y: my }, { x: mx - 2, y: my }];
+    snake     = [{ x: mx, y: my }, { x: mx-1, y: my }, { x: mx-2, y: my }];
     prevSnake = cloneSnake(snake);
-    dir       = { x: 1, y: 0 };
-    nextDir   = { x: 1, y: 0 };
-    score     = 0;
-    foodEaten = 0;
+    dir = nextDir = { x: 1, y: 0 };
+    score = foodEaten = interpT = 0;
     updateScore();
     placeFood();
-    gameOver  = false;
-    paused    = false;
-    interpT   = 0;
+    gameOver = paused = false;
   }
 
-  // --- Logical step (advances grid positions) ---
+  /* ── Logic step ── */
   function step() {
     dir = { ...nextDir };
     const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-
     if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) { endGame(); return; }
     if (snake.some(s => s.x === head.x && s.y === head.y))             { endGame(); return; }
 
@@ -367,131 +380,100 @@
     snake.unshift(head);
 
     if (head.x === food.x && head.y === food.y) {
-      score += speed * 10;
-      foodEaten++;
-      updateScore();
-      placeFood();
-      if (foodEaten % 5 === 0 && speed < 5) {
-        speed++;
-        updateSpeedDots();
-      }
-      // prevSnake needs a tail placeholder so interpolation doesn't pop visually
+      score += speed * 10; foodEaten++;
+      updateScore(); placeFood();
+      if (foodEaten % 5 === 0 && speed < 5) { speed++; updateSpeedDots(); }
       prevSnake.push(prevSnake[prevSnake.length - 1]);
     } else {
       snake.pop();
     }
   }
 
-  // --- rAF loop ---
+  /* ── rAF loop ── */
   function loop(ts) {
     if (!running) return;
     rafId = requestAnimationFrame(loop);
-
     if (paused) return;
-
     const elapsed = ts - lastStepTs;
-    const ms      = stepMs();
-    interpT       = Math.min(elapsed / ms, 1);
-
-    if (elapsed >= ms) {
-      step();
-      if (!running) return;   // endGame() may have stopped loop
-      lastStepTs = ts;
-      interpT    = 0;
-    }
-
+    const ms = stepMs();
+    interpT = Math.min(elapsed / ms, 1);
+    if (elapsed >= ms) { step(); if (!running) return; lastStepTs = ts; interpT = 0; }
     draw(interpT);
   }
 
-  // --- Draw with interpolation ---
+  /* ── Draw ── */
   function draw(t = 1) {
-    // Background
     ctx.fillStyle = C_BG;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, W, H);
 
     // Grid dots
     ctx.fillStyle = C_LIGHT;
     for (let r = 0; r < ROWS; r++)
       for (let c = 0; c < COLS; c++)
-        ctx.fillRect(c * CW + CW / 2 - 0.5, r * CH + CH / 2 - 0.5, 1, 1);
+        ctx.fillRect(c * CW + CW/2 - 0.5, r * CH + CH/2 - 0.5, 1.5, 1.5);
 
     // Food
     const fx = food.x * CW, fy = food.y * CH;
     ctx.fillStyle = C_DARK;
-    ctx.fillRect(fx + 2, fy + 1, CW - 4, CH - 2);
-    ctx.fillRect(fx + 1, fy + 2, CW - 2, CH - 4);
+    ctx.fillRect(fx+3, fy+1, CW-6, CH-2);
+    ctx.fillRect(fx+1, fy+3, CW-2, CH-6);
 
-    // Snake — interpolate each segment between prevSnake and snake
+    // Snake
     for (let i = 0; i < snake.length; i++) {
       const cur  = snake[i];
       const prev = prevSnake[i] || cur;
-
-      // pixel position (interpolated)
-      const px = (prev.x + (cur.x - prev.x) * t) * CW;
-      const py = (prev.y + (cur.y - prev.y) * t) * CH;
+      const px   = (prev.x + (cur.x - prev.x) * t) * CW;
+      const py   = (prev.y + (cur.y - prev.y) * t) * CH;
 
       if (i === 0) {
-        // Head
         ctx.fillStyle = C_DARK;
-        ctx.fillRect(px + 1, py + 1, CW - 2, CH - 2);
-        // Eyes
+        ctx.fillRect(px+1, py+1, CW-2, CH-2);
         ctx.fillStyle = C_BG;
-        if      (dir.x ===  1) { ctx.fillRect(px+CW-4,py+2,2,2); ctx.fillRect(px+CW-4,py+CH-4,2,2); }
-        else if (dir.x === -1) { ctx.fillRect(px+2,py+2,2,2);    ctx.fillRect(px+2,py+CH-4,2,2); }
-        else if (dir.y === -1) { ctx.fillRect(px+2,py+2,2,2);    ctx.fillRect(px+CW-4,py+2,2,2); }
-        else                   { ctx.fillRect(px+2,py+CH-4,2,2); ctx.fillRect(px+CW-4,py+CH-4,2,2); }
+        if      (dir.x ===  1) { ctx.fillRect(px+CW-5,py+3,3,3); ctx.fillRect(px+CW-5,py+CH-6,3,3); }
+        else if (dir.x === -1) { ctx.fillRect(px+2,py+3,3,3);    ctx.fillRect(px+2,py+CH-6,3,3); }
+        else if (dir.y === -1) { ctx.fillRect(px+3,py+2,3,3);    ctx.fillRect(px+CW-6,py+2,3,3); }
+        else                   { ctx.fillRect(px+3,py+CH-5,3,3); ctx.fillRect(px+CW-6,py+CH-5,3,3); }
       } else {
         ctx.fillStyle = i % 2 === 0 ? C_DARK : C_MID;
-        ctx.fillRect(px + 1, py + 1, CW - 2, CH - 2);
+        ctx.fillRect(px+1, py+1, CW-2, CH-2);
       }
     }
   }
 
-  // --- End game ---
+  /* ── End ── */
   function endGame() {
-    running  = false;
-    gameOver = true;
+    running = false; gameOver = true;
     cancelAnimationFrame(rafId);
     let f = 0;
     const fi = setInterval(() => {
-      ctx.fillStyle = f % 2 === 0 ? C_DARK : C_BG;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      if (++f >= 6) {
-        clearInterval(fi);
-        draw(1);
-        showOverlay('GAME OVER', 'SCORE: ' + score, 'PRESS ENTER');
-      }
+      ctx.fillStyle = f++ % 2 === 0 ? C_DARK : C_BG;
+      ctx.fillRect(0, 0, W, H);
+      if (f >= 6) { clearInterval(fi); draw(1); showOverlay('GAME OVER', 'SCORE: ' + score, 'TAP OK'); }
     }, 100);
   }
 
-  // --- Overlays ---
+  /* ── Overlays ── */
   function showOverlay(title, sub, msg) {
     const ov = document.getElementById('overlay');
     ov.classList.remove('hidden');
     ov.querySelector('.overlay-title').textContent = title;
     document.getElementById('overlayMsg').textContent = msg;
     const sc = document.getElementById('overlayScore');
-    if (sub) { sc.style.display = 'block'; sc.textContent = sub; }
-    else      { sc.style.display = 'none'; }
+    if (sub) { sc.style.display = 'block'; sc.textContent = sub; } else { sc.style.display = 'none'; }
   }
+  function hideOverlay() { document.getElementById('overlay').classList.add('hidden'); }
 
-  function hideOverlay() {
-    document.getElementById('overlay').classList.add('hidden');
-  }
-
-  // --- Start / Restart ---
+  /* ── Start ── */
   function startGame() {
     cancelAnimationFrame(rafId);
-    init();
-    hideOverlay();
-    running    = true;
-    speed      = 1;
+    init(); hideOverlay();
+    running = true; speed = 1;
     updateSpeedDots();
     lastStepTs = performance.now();
-    rafId      = requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(loop);
   }
 
-  // --- Direction ---
+  /* ── Direction ── */
   function setDir(dx, dy) {
     if (!running || paused) return;
     if (dx ===  1 && dir.x === -1) return;
@@ -501,39 +483,65 @@
     nextDir = { x: dx, y: dy };
   }
 
-  // --- Keyboard ---
+  /* ── Keyboard ── */
   document.addEventListener('keydown', e => {
     switch (e.key) {
-      case 'ArrowUp':    case 'w': e.preventDefault(); setDir(0, -1); break;
-      case 'ArrowDown':  case 's': e.preventDefault(); setDir(0,  1); break;
-      case 'ArrowLeft':  case 'a': e.preventDefault(); setDir(-1, 0); break;
-      case 'ArrowRight': case 'd': e.preventDefault(); setDir( 1, 0); break;
+      case 'ArrowUp':    case 'w': e.preventDefault(); setDir(0,-1); break;
+      case 'ArrowDown':  case 's': e.preventDefault(); setDir(0, 1); break;
+      case 'ArrowLeft':  case 'a': e.preventDefault(); setDir(-1,0); break;
+      case 'ArrowRight': case 'd': e.preventDefault(); setDir( 1,0); break;
       case 'Enter': case ' ':
-        if (!running || gameOver) startGame();
-        else togglePause();
-        break;
+        if (!running || gameOver) startGame(); else togglePause(); break;
     }
   });
 
+  /* ── Pause ── */
   function togglePause() {
     if (!running || gameOver) return;
     paused = !paused;
-    if (paused) showOverlay('PAUSED', null, 'PRESS ENTER');
-    else        hideOverlay();
+    if (paused) showOverlay('PAUSED', null, 'TAP OK'); else hideOverlay();
   }
 
-  // --- Buttons ---
+  /* ── D-pad buttons (touch + click) ── */
+  function bindBtn(id, fn) {
+    const el = document.getElementById(id);
+    // touchstart fires immediately, no 300ms delay
+    el.addEventListener('touchstart', e => { e.preventDefault(); fn(); }, { passive: false });
+    el.addEventListener('mousedown',  e => { e.preventDefault(); fn(); });
+  }
+
+  bindBtn('dpUp',    () => setDir(0, -1));
+  bindBtn('dpDown',  () => setDir(0,  1));
+  bindBtn('dpLeft',  () => setDir(-1, 0));
+  bindBtn('dpRight', () => setDir( 1, 0));
+  bindBtn('dpOk',    () => { if (!running || gameOver) startGame(); else togglePause(); });
+
+  /* ── Swipe detection on canvas ── */
+  let swipeStart = null;
+  canvas.addEventListener('touchstart', e => {
+    swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: true });
+  canvas.addEventListener('touchend', e => {
+    if (!swipeStart) return;
+    const dx = e.changedTouches[0].clientX - swipeStart.x;
+    const dy = e.changedTouches[0].clientY - swipeStart.y;
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // tap, not swipe
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
+    else                              setDir(0, dy > 0 ? 1 : -1);
+    swipeStart = null;
+  }, { passive: true });
+
+  /* ── Top buttons ── */
   document.getElementById('btnPause').addEventListener('click', togglePause);
   document.getElementById('btnSpeed').addEventListener('click', () => {
     if (!running) return;
     speed = speed < 5 ? speed + 1 : 1;
     updateSpeedDots();
-    // Don't reset lastStepTs — the new speed takes effect naturally next step
   });
 
-  // --- Initial blank screen ---
+  /* ── Init display ── */
   ctx.fillStyle = C_BG;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, W, H);
   updateSpeedDots();
 })();
 </script>
