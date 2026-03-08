@@ -383,6 +383,17 @@
     draw(interpT);
   }
 
+  /* ── Food — small filled dot ── */
+  function drawBottle(ox, oy) {
+    const r = CW * 0.3;
+    const cx = ox + CW / 2;
+    const cy = oy + CH / 2;
+    ctx.fillStyle = C_DARK;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   /* ── Draw ── */
   function draw(t) {
     if (t === undefined) t = 1;
@@ -396,11 +407,8 @@
       for (let c = 0; c < COLS; c++)
         ctx.fillRect(c * CW + CW / 2 - 0.5, r * CH + CH / 2 - 0.5, 1.5, 1.5);
 
-    // Food
-    const fx = food.x * CW, fy = food.y * CH;
-    ctx.fillStyle = C_DARK;
-    ctx.fillRect(fx + 3, fy + 1, CW - 6, CH - 2);
-    ctx.fillRect(fx + 1, fy + 3, CW - 2, CH - 6);
+    // Food — pixel-art cola bottle (monochrome, fits in CW×CH cell)
+    drawBottle(food.x * CW, food.y * CH);
 
     // Snake segments (interpolated)
     for (let i = 0; i < snake.length; i++) {
@@ -492,14 +500,18 @@
 
   /* ── Overlay tap: start or resume ── */
   var overlay = document.getElementById('overlay');
+  var overlayHandled = false;
 
   overlay.addEventListener('touchstart', function (e) {
     e.preventDefault();
+    e.stopPropagation();
+    overlayHandled = true;
     if (!running || gameOver) startGame();
     else togglePause();
   }, { passive: false });
 
-  overlay.addEventListener('click', function () {
+  overlay.addEventListener('click', function (e) {
+    e.stopPropagation();
     if (!running || gameOver) startGame();
     else togglePause();
   });
@@ -511,11 +523,13 @@
 
   wrap.addEventListener('touchstart', function (e) {
     e.preventDefault();
+    overlayHandled = false;
     touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, { passive: false });
 
   wrap.addEventListener('touchend', function (e) {
     e.preventDefault();
+    if (overlayHandled) { overlayHandled = false; return; }
     if (!touchStart) return;
     var dx   = e.changedTouches[0].clientX - touchStart.x;
     var dy   = e.changedTouches[0].clientY - touchStart.y;
