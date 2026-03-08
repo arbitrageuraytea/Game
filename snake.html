@@ -149,10 +149,12 @@
     border-radius: 3px;
     z-index: 10;
     gap: 6px;
-    /* overlay passes pointer events through so canvas-wrap handles them */
-    pointer-events: none;
+    cursor: pointer;
+    /* pointer-events active so overlay itself is tappable on start/gameover screens */
+    pointer-events: auto;
   }
-  .overlay.hidden { display: none; }
+  .overlay.hidden { display: none; pointer-events: none; }
+  /* During gameplay the overlay is hidden, canvas-wrap handles swipe steering */
 
   .overlay-title {
     font-family: 'VT323', monospace;
@@ -233,7 +235,7 @@
         <div class="overlay" id="overlay">
           <div class="overlay-title" id="overlayTitle">SNAKE</div>
           <div class="overlay-sub" style="color:var(--screen-dark);letter-spacing:2px;">▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>
-          <div class="overlay-sub blink" id="overlayMsg">TAP TO PLAY</div>
+          <div class="overlay-sub blink" id="overlayMsg">TOUCH OR ENTER</div>
           <div class="overlay-sub" id="overlayScore" style="display:none;"></div>
         </div>
       </div>
@@ -241,7 +243,6 @@
   </div>
 
   <div class="controls-top">
-    <button class="btn-small" id="btnStart">START</button>
     <button class="btn-small" id="btnPause">PAUSE</button>
     <button class="btn-small" id="btnSpeed">SPEED</button>
   </div>
@@ -489,7 +490,21 @@
     }
   });
 
-  /* ── Touch / click on screen: tap = start/pause, swipe = steer ── */
+  /* ── Overlay tap: start or resume ── */
+  var overlay = document.getElementById('overlay');
+
+  overlay.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    if (!running || gameOver) startGame();
+    else togglePause();
+  }, { passive: false });
+
+  overlay.addEventListener('click', function () {
+    if (!running || gameOver) startGame();
+    else togglePause();
+  });
+
+  /* ── Canvas-wrap swipe: steer during gameplay ── */
   var touchStart = null;
   var SWIPE_MIN  = 15;
   var wrap = document.getElementById('canvasWrap');
@@ -508,25 +523,16 @@
     touchStart = null;
 
     if (dist < SWIPE_MIN) {
-      if (!running || gameOver) startGame();
-      else togglePause();
+      // Short tap on canvas during game = pause
+      if (running && !gameOver) togglePause();
     } else {
-      if (!running || gameOver) startGame();
+      // Swipe = steer
       if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
       else                              setDir(0, dy > 0 ? 1 : -1);
     }
   }, { passive: false });
 
-  /* click fallback for desktop / environments where touch doesn't fire */
-  wrap.addEventListener('click', function () {
-    if (!running || gameOver) startGame();
-    else togglePause();
-  });
-
   /* ── Buttons ── */
-  document.getElementById('btnStart').addEventListener('click', function () {
-    startGame();
-  });
   document.getElementById('btnPause').addEventListener('click', togglePause);
   document.getElementById('btnSpeed').addEventListener('click', function () {
     if (!running) return;
