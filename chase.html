@@ -204,55 +204,12 @@
     margin-top: -4px;
   }
 
-  /* ── Mobile joystick ── */
-  #joystick-wrap {
-    display: none;
-    margin-top: 10px;
-    touch-action: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  @media (pointer: coarse) { #joystick-wrap { display: block; } }
-
-  #joystick-zone {
-    position: relative;
-    width: 200px;
-    height: 200px;
-    background: rgba(255,255,255,0.35);
-    border: 3px solid #3d2b1f;
-    border-radius: 50%;
-    box-shadow: 4px 4px 0 #3d2b1f;
-    overflow: hidden;
-  }
-
-  /* Cardinal sector highlights */
-  #joystick-zone .sector {
-    position: absolute;
-    width: 50%; height: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px;
-    opacity: 0.35;
-    transition: opacity 0.1s, background 0.1s;
-    pointer-events: none;
-  }
-  #joystick-zone .sector.active { opacity: 1; background: rgba(224,92,42,0.18); }
-  #s-up    { top:0;   left:25%; width:50%; height:50%; border-radius: 0 0 50% 50%; }
-  #s-down  { bottom:0;left:25%; width:50%; height:50%; border-radius: 50% 50% 0 0; }
-  #s-left  { left:0;  top:25%;  width:50%; height:50%; border-radius: 0 50% 50% 0; }
-  #s-right { right:0; top:25%;  width:50%; height:50%; border-radius: 50% 0 0 50%; }
-
-  #joystick-knob {
-    position: absolute;
-    width: 72px; height: 72px;
-    background: #e05c2a;
-    border: 3px solid #3d2b1f;
-    border-radius: 50%;
-    box-shadow: 3px 3px 0 #3d2b1f;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    transition: background 0.1s;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
+  /* ── Tap-to-move hint ── */
+  #touch-hint {
+    font-size: 12px;
+    color: #8a6a50;
+    font-weight: 700;
+    margin-top: -4px;
   }
 </style>
 </head>
@@ -316,16 +273,7 @@
     </div>
   </div>
 
-  <!-- Joystick for mobile -->
-  <div id="joystick-wrap">
-    <div id="joystick-zone">
-      <div class="sector" id="s-up">▲</div>
-      <div class="sector" id="s-down">▼</div>
-      <div class="sector" id="s-left">◀</div>
-      <div class="sector" id="s-right">▶</div>
-      <div id="joystick-knob">🐾</div>
-    </div>
-  </div>
+  <div id="touch-hint">Tap anywhere to move · Arrow keys on desktop</div>
 </div>
 
 <script>
@@ -362,6 +310,7 @@ let dailyDone = localStorage.getItem('catmouse_daily') === new Date().toDateStri
 let currentSkin = 0;
 let particles = [];
 let dirQueue = [];
+let activePath = []; // BFS path: array of {x,y} cells remaining
 
 // Audio
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -395,11 +344,9 @@ function playSound(type) {
 // ─── SIZING ───────────────────────────────────────────────────────────────────
 function resize() {
   const maxW = Math.min(window.innerWidth - 32, 480);
-  // On touch devices, reserve 220px for the joystick below
-  const joystickReserve = window.matchMedia('(pointer: coarse)').matches ? 230 : 0;
-  const maxH = Math.min(window.innerHeight - 120 - joystickReserve, 480);
+  const maxH = Math.min(window.innerHeight - 120, 480);
   const sz = Math.floor(Math.min(maxW, maxH) / BASE_COLS);
-  cellSize = Math.max(sz, 18);
+  cellSize = Math.max(sz, 20);
   cols = BASE_COLS; rows = BASE_ROWS;
   canvas.width  = cols * cellSize;
   canvas.height = rows * cellSize;
@@ -451,7 +398,7 @@ function initGame() {
   buildLevel();
   catX = 2; catY = 2;
   catDir = {x:1, y:0};
-  dirQueue = [];
+  dirQueue = []; activePath = [];
   spawnMice();
   score = 0; lives = 3; combo = 1; bestCombo = 1; lastCatchTime = 0;
   level = 1; particles = [];
@@ -499,14 +446,30 @@ function moveMice(ts) {
 
 // ─── GAME STEP ────────────────────────────────────────────────────────────────
 function step(ts) {
-  // Move cat
+  // Move cat: consume next step from activePath, fallback to dirQueue
   let moved = false;
-  while (dirQueue.length) {
-    const d = dirQueue.shift();
+
+  // If we have a path, convert next cell into a direction
+  if (activePath.length > 0) {
+    const next = activePath[0];
+    const d = { x: next.x - catX, y: next.y - catY };
     const nx = catX + d.x, ny = catY + d.y;
-    if (isFree(nx,ny)) {
+    if (isFree(nx, ny)) {
+      activePath.shift();
       catX = nx; catY = ny; catDir = d; moved = true;
-      break;
+    } else {
+      // Path blocked (wall appeared) — clear it
+      activePath = []; dirQueue = [];
+    }
+  } else {
+    // Keyboard fallback
+    while (dirQueue.length) {
+      const d = dirQueue.shift();
+      const nx = catX + d.x, ny = catY + d.y;
+      if (isFree(nx, ny)) {
+        catX = nx; catY = ny; catDir = d; moved = true;
+        break;
+      }
     }
   }
 
@@ -737,6 +700,33 @@ function draw(ts) {
     }
   });
 
+  // Path trail
+  if (activePath.length > 0) {
+    activePath.forEach((cell, i) => {
+      const alpha = 0.55 - (i / activePath.length) * 0.4;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#e05c2a';
+      const cx = (cell.x + 0.5) * cellSize, cy = (cell.y + 0.5) * cellSize;
+      const r = cellSize * 0.13;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+    // Target marker
+    const tgt = activePath[activePath.length - 1];
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = '#e05c2a';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.arc((tgt.x + 0.5) * cellSize, (tgt.y + 0.5) * cellSize, cellSize * 0.38, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // Cat
   const catCX = (catX+0.5)*cellSize, catCY = (catY+0.5)*cellSize;
   ctx.save();
@@ -795,101 +785,56 @@ document.addEventListener('keydown', e => {
   if (dir) { e.preventDefault(); if (dirQueue.length < 3) dirQueue.push(dir); }
 });
 
-// ─── JOYSTICK ─────────────────────────────────────────────────────────────────
-(function() {
-  const zone   = document.getElementById('joystick-zone');
-  const knob   = document.getElementById('joystick-knob');
-  const sUp    = document.getElementById('s-up');
-  const sDown  = document.getElementById('s-down');
-  const sLeft  = document.getElementById('s-left');
-  const sRight = document.getElementById('s-right');
-  if (!zone) return;
-
-  const RADIUS   = 100; // half of 200px zone
-  const KNOB_MAX = 54;
-  const DEAD     = 16;
-  let activeTouchId = null;
-  let lastDir = null;
-
-  function clearSectors() {
-    [sUp,sDown,sLeft,sRight].forEach(s => s.classList.remove('active'));
-  }
-
-  function applyDir(dx, dy) {
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    if (dist < DEAD) { clearSectors(); lastDir = null; resetKnob(); return; }
-
-    // Snap to cardinal
-    let dir;
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      dir = dx > 0 ? {x:1,y:0} : {x:-1,y:0};
-    } else {
-      dir = dy > 0 ? {x:0,y:1} : {x:0,y:-1};
+// ─── BFS PATHFINDER ───────────────────────────────────────────────────────────
+function bfsPath(sx, sy, tx, ty) {
+  if (sx === tx && sy === ty) return [];
+  const visited = new Set();
+  const queue = [{ x: sx, y: sy, path: [] }];
+  visited.add(`${sx},${sy}`);
+  const DIRS = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+  while (queue.length) {
+    const { x, y, path } = queue.shift();
+    for (const d of DIRS) {
+      const nx = x + d.x, ny = y + d.y;
+      const key = `${nx},${ny}`;
+      if (visited.has(key)) continue;
+      if (!isFree(nx, ny)) continue;
+      const newPath = [...path, { x: nx, y: ny }];
+      if (nx === tx && ny === ty) return newPath;
+      visited.add(key);
+      queue.push({ x: nx, y: ny, path: newPath });
     }
-
-    // Only enqueue on direction change — prevents flooding
-    if (!lastDir || lastDir.x !== dir.x || lastDir.y !== dir.y) {
-      if (gameRunning && dirQueue.length < 2) dirQueue.push({...dir});
-      lastDir = dir;
-    }
-
-    clearSectors();
-    if (dir.x === 1)  sRight.classList.add('active');
-    if (dir.x === -1) sLeft.classList.add('active');
-    if (dir.y === 1)  sDown.classList.add('active');
-    if (dir.y === -1) sUp.classList.add('active');
-
-    // Animate knob
-    const travel = Math.min(dist, KNOB_MAX);
-    const angle  = Math.atan2(dy, dx);
-    knob.style.transform =
-      `translate(calc(-50% + ${Math.cos(angle)*travel}px), calc(-50% + ${Math.sin(angle)*travel}px))`;
   }
+  return []; // no path
+}
 
-  function resetKnob() {
-    knob.style.transform = 'translate(-50%, -50%)';
-    clearSectors();
-    lastDir = null;
+// ─── CANVAS TAP → PATHFIND ────────────────────────────────────────────────────
+function handleCanvasTap(clientX, clientY) {
+  if (!gameRunning) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const px = (clientX - rect.left) * scaleX;
+  const py = (clientY - rect.top)  * scaleY;
+  const tx = Math.floor(px / cellSize);
+  const ty = Math.floor(py / cellSize);
+  if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) return;
+  if (!isFree(tx, ty)) return;
+  const path = bfsPath(catX, catY, tx, ty);
+  if (path.length > 0) {
+    activePath = path;
+    dirQueue = [];
   }
+}
 
-  function relPos(touch) {
-    const r = zone.getBoundingClientRect();
-    return { dx: touch.clientX - r.left - RADIUS, dy: touch.clientY - r.top - RADIUS };
-  }
+canvas.addEventListener('click', e => handleCanvasTap(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) handleCanvasTap(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
 
-  zone.addEventListener('touchstart', e => {
-    e.preventDefault();
-    if (activeTouchId !== null) return;
-    const t = e.changedTouches[0];
-    activeTouchId = t.identifier;
-    const {dx,dy} = relPos(t);
-    applyDir(dx, dy);
-  }, {passive:false});
 
-  zone.addEventListener('touchmove', e => {
-    e.preventDefault();
-    for (const t of e.changedTouches) {
-      if (t.identifier === activeTouchId) {
-        const {dx,dy} = relPos(t);
-        applyDir(dx, dy);
-        break;
-      }
-    }
-  }, {passive:false});
 
-  zone.addEventListener('touchend', e => {
-    e.preventDefault();
-    for (const t of e.changedTouches) {
-      if (t.identifier === activeTouchId) {
-        activeTouchId = null;
-        resetKnob();
-        break;
-      }
-    }
-  }, {passive:false});
-
-  zone.addEventListener('touchcancel', () => { activeTouchId = null; resetKnob(); }, {passive:false});
-})();
 
 function showScreen(id) {
   hideAllScreens();
