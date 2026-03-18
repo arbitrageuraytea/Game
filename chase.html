@@ -68,6 +68,11 @@
     padding: 24px;
     text-align: center;
     z-index: 10;
+    touch-action: auto;
+  }
+
+  .screen.hidden {
+    pointer-events: none !important;
   }
 
   #screen-start { background: rgba(245,230,200,0.97); }
@@ -198,6 +203,30 @@
     font-weight: 700;
     margin-top: -4px;
   }
+
+  #dpad {
+    display: none;
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(3, 44px);
+    gap: 4px;
+    margin-top: 6px;
+  }
+  @media (pointer: coarse) { #dpad { display: grid; } }
+
+  .dpad-btn {
+    background: rgba(255,255,255,0.7);
+    border: 2.5px solid #3d2b1f;
+    border-radius: 10px;
+    box-shadow: 2px 2px 0 #3d2b1f;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.08s, box-shadow 0.08s;
+    touch-action: manipulation;
+  }
+  .dpad-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #3d2b1f; background: rgba(224,92,42,0.2); }
+  .dpad-center { visibility: hidden; }
 </style>
 </head>
 <body>
@@ -259,13 +288,26 @@
       <button class="btn" id="btn-retry2">Revenge! 😾</button>
     </div>
   </div>
+
+  <!-- D-pad for mobile -->
+  <div id="dpad">
+    <div class="dpad-btn dpad-center"></div>
+    <div class="dpad-btn" id="dp-up">▲</div>
+    <div class="dpad-btn dpad-center"></div>
+    <div class="dpad-btn" id="dp-left">◀</div>
+    <div class="dpad-btn dpad-center"></div>
+    <div class="dpad-btn" id="dp-right">▶</div>
+    <div class="dpad-btn dpad-center"></div>
+    <div class="dpad-btn" id="dp-down">▼</div>
+    <div class="dpad-btn dpad-center"></div>
+  </div>
 </div>
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const CELL = 32;
 const BASE_COLS = 14, BASE_ROWS = 14;
-const BASE_SPEED = 180; // ms per step
+const BASE_SPEED = 110; // ms per step
 const COMBO_WINDOW = 2000; // ms
 
 const SKINS = [
@@ -392,7 +434,7 @@ function initGame() {
 }
 
 function getStepInterval() {
-  return Math.max(80, BASE_SPEED - (level - 1) * 14);
+  return Math.max(60, BASE_SPEED - (level - 1) * 10);
 }
 
 // ─── AI ───────────────────────────────────────────────────────────────────────
@@ -726,27 +768,43 @@ document.addEventListener('keydown', e => {
   if (dir) { e.preventDefault(); if (dirQueue.length < 3) dirQueue.push(dir); }
 });
 
-// Touch swipe
+// Touch swipe — listen on document so it works anywhere on screen during gameplay
 let touchStart = null;
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
+document.addEventListener('touchstart', e => {
+  if (!gameRunning) return;
   touchStart = {x:e.touches[0].clientX, y:e.touches[0].clientY};
-}, {passive:false});
-canvas.addEventListener('touchend', e => {
-  e.preventDefault();
+}, {passive:true});
+document.addEventListener('touchend', e => {
   if (!touchStart || !gameRunning) return;
   const dx = e.changedTouches[0].clientX - touchStart.x;
   const dy = e.changedTouches[0].clientY - touchStart.y;
-  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+  touchStart = null;
+  if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
   if (Math.abs(dx) > Math.abs(dy)) {
     dirQueue.push(dx>0?{x:1,y:0}:{x:-1,y:0});
   } else {
     dirQueue.push(dy>0?{x:0,y:1}:{x:0,y:-1});
   }
-  touchStart = null;
-}, {passive:false});
+}, {passive:true});
 
-// ─── SCREENS ──────────────────────────────────────────────────────────────────
+// D-pad buttons
+[
+  ['dp-up',    {x:0,y:-1}],
+  ['dp-down',  {x:0,y:1}],
+  ['dp-left',  {x:-1,y:0}],
+  ['dp-right', {x:1,y:0}],
+].forEach(([id, dir]) => {
+  const btn = document.getElementById(id);
+  btn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (!gameRunning) return;
+    if (dirQueue.length < 3) dirQueue.push(dir);
+  }, {passive:false});
+  btn.addEventListener('mousedown', e => {
+    if (!gameRunning) return;
+    if (dirQueue.length < 3) dirQueue.push(dir);
+  });
+});
 function showScreen(id) {
   hideAllScreens();
   document.getElementById(id).classList.remove('hidden');
