@@ -204,29 +204,56 @@
     margin-top: -4px;
   }
 
-  #dpad {
+  /* ── Mobile joystick ── */
+  #joystick-wrap {
     display: none;
-    grid-template-columns: repeat(3, 44px);
-    grid-template-rows: repeat(3, 44px);
-    gap: 4px;
-    margin-top: 6px;
-  }
-  @media (pointer: coarse) { #dpad { display: grid; } }
-
-  .dpad-btn {
-    background: rgba(255,255,255,0.7);
-    border: 2.5px solid #3d2b1f;
-    border-radius: 10px;
-    box-shadow: 2px 2px 0 #3d2b1f;
-    font-size: 20px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
+    margin-top: 10px;
+    touch-action: none;
     -webkit-tap-highlight-color: transparent;
-    transition: transform 0.08s, box-shadow 0.08s;
-    touch-action: manipulation;
   }
-  .dpad-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #3d2b1f; background: rgba(224,92,42,0.2); }
-  .dpad-center { visibility: hidden; }
+  @media (pointer: coarse) { #joystick-wrap { display: block; } }
+
+  #joystick-zone {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    background: rgba(255,255,255,0.35);
+    border: 3px solid #3d2b1f;
+    border-radius: 50%;
+    box-shadow: 4px 4px 0 #3d2b1f;
+    overflow: hidden;
+  }
+
+  /* Cardinal sector highlights */
+  #joystick-zone .sector {
+    position: absolute;
+    width: 50%; height: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    opacity: 0.35;
+    transition: opacity 0.1s, background 0.1s;
+    pointer-events: none;
+  }
+  #joystick-zone .sector.active { opacity: 1; background: rgba(224,92,42,0.18); }
+  #s-up    { top:0;   left:25%; width:50%; height:50%; border-radius: 0 0 50% 50%; }
+  #s-down  { bottom:0;left:25%; width:50%; height:50%; border-radius: 50% 50% 0 0; }
+  #s-left  { left:0;  top:25%;  width:50%; height:50%; border-radius: 0 50% 50% 0; }
+  #s-right { right:0; top:25%;  width:50%; height:50%; border-radius: 50% 0 0 50%; }
+
+  #joystick-knob {
+    position: absolute;
+    width: 72px; height: 72px;
+    background: #e05c2a;
+    border: 3px solid #3d2b1f;
+    border-radius: 50%;
+    box-shadow: 3px 3px 0 #3d2b1f;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: background 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+  }
 </style>
 </head>
 <body>
@@ -289,17 +316,15 @@
     </div>
   </div>
 
-  <!-- D-pad for mobile -->
-  <div id="dpad">
-    <div class="dpad-btn dpad-center"></div>
-    <div class="dpad-btn" id="dp-up">▲</div>
-    <div class="dpad-btn dpad-center"></div>
-    <div class="dpad-btn" id="dp-left">◀</div>
-    <div class="dpad-btn dpad-center"></div>
-    <div class="dpad-btn" id="dp-right">▶</div>
-    <div class="dpad-btn dpad-center"></div>
-    <div class="dpad-btn" id="dp-down">▼</div>
-    <div class="dpad-btn dpad-center"></div>
+  <!-- Joystick for mobile -->
+  <div id="joystick-wrap">
+    <div id="joystick-zone">
+      <div class="sector" id="s-up">▲</div>
+      <div class="sector" id="s-down">▼</div>
+      <div class="sector" id="s-left">◀</div>
+      <div class="sector" id="s-right">▶</div>
+      <div id="joystick-knob">🐾</div>
+    </div>
   </div>
 </div>
 
@@ -370,9 +395,11 @@ function playSound(type) {
 // ─── SIZING ───────────────────────────────────────────────────────────────────
 function resize() {
   const maxW = Math.min(window.innerWidth - 32, 480);
-  const maxH = Math.min(window.innerHeight - 120, 480);
+  // On touch devices, reserve 220px for the joystick below
+  const joystickReserve = window.matchMedia('(pointer: coarse)').matches ? 230 : 0;
+  const maxH = Math.min(window.innerHeight - 120 - joystickReserve, 480);
   const sz = Math.floor(Math.min(maxW, maxH) / BASE_COLS);
-  cellSize = Math.max(sz, 20);
+  cellSize = Math.max(sz, 18);
   cols = BASE_COLS; rows = BASE_ROWS;
   canvas.width  = cols * cellSize;
   canvas.height = rows * cellSize;
@@ -768,43 +795,102 @@ document.addEventListener('keydown', e => {
   if (dir) { e.preventDefault(); if (dirQueue.length < 3) dirQueue.push(dir); }
 });
 
-// Touch swipe — listen on document so it works anywhere on screen during gameplay
-let touchStart = null;
-document.addEventListener('touchstart', e => {
-  if (!gameRunning) return;
-  touchStart = {x:e.touches[0].clientX, y:e.touches[0].clientY};
-}, {passive:true});
-document.addEventListener('touchend', e => {
-  if (!touchStart || !gameRunning) return;
-  const dx = e.changedTouches[0].clientX - touchStart.x;
-  const dy = e.changedTouches[0].clientY - touchStart.y;
-  touchStart = null;
-  if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-  if (Math.abs(dx) > Math.abs(dy)) {
-    dirQueue.push(dx>0?{x:1,y:0}:{x:-1,y:0});
-  } else {
-    dirQueue.push(dy>0?{x:0,y:1}:{x:0,y:-1});
-  }
-}, {passive:true});
+// ─── JOYSTICK ─────────────────────────────────────────────────────────────────
+(function() {
+  const zone   = document.getElementById('joystick-zone');
+  const knob   = document.getElementById('joystick-knob');
+  const sUp    = document.getElementById('s-up');
+  const sDown  = document.getElementById('s-down');
+  const sLeft  = document.getElementById('s-left');
+  const sRight = document.getElementById('s-right');
+  if (!zone) return;
 
-// D-pad buttons
-[
-  ['dp-up',    {x:0,y:-1}],
-  ['dp-down',  {x:0,y:1}],
-  ['dp-left',  {x:-1,y:0}],
-  ['dp-right', {x:1,y:0}],
-].forEach(([id, dir]) => {
-  const btn = document.getElementById(id);
-  btn.addEventListener('touchstart', e => {
+  const RADIUS   = 100; // half of 200px zone
+  const KNOB_MAX = 54;
+  const DEAD     = 16;
+  let activeTouchId = null;
+  let lastDir = null;
+
+  function clearSectors() {
+    [sUp,sDown,sLeft,sRight].forEach(s => s.classList.remove('active'));
+  }
+
+  function applyDir(dx, dy) {
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < DEAD) { clearSectors(); lastDir = null; resetKnob(); return; }
+
+    // Snap to cardinal
+    let dir;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      dir = dx > 0 ? {x:1,y:0} : {x:-1,y:0};
+    } else {
+      dir = dy > 0 ? {x:0,y:1} : {x:0,y:-1};
+    }
+
+    // Only enqueue on direction change — prevents flooding
+    if (!lastDir || lastDir.x !== dir.x || lastDir.y !== dir.y) {
+      if (gameRunning && dirQueue.length < 2) dirQueue.push({...dir});
+      lastDir = dir;
+    }
+
+    clearSectors();
+    if (dir.x === 1)  sRight.classList.add('active');
+    if (dir.x === -1) sLeft.classList.add('active');
+    if (dir.y === 1)  sDown.classList.add('active');
+    if (dir.y === -1) sUp.classList.add('active');
+
+    // Animate knob
+    const travel = Math.min(dist, KNOB_MAX);
+    const angle  = Math.atan2(dy, dx);
+    knob.style.transform =
+      `translate(calc(-50% + ${Math.cos(angle)*travel}px), calc(-50% + ${Math.sin(angle)*travel}px))`;
+  }
+
+  function resetKnob() {
+    knob.style.transform = 'translate(-50%, -50%)';
+    clearSectors();
+    lastDir = null;
+  }
+
+  function relPos(touch) {
+    const r = zone.getBoundingClientRect();
+    return { dx: touch.clientX - r.left - RADIUS, dy: touch.clientY - r.top - RADIUS };
+  }
+
+  zone.addEventListener('touchstart', e => {
     e.preventDefault();
-    if (!gameRunning) return;
-    if (dirQueue.length < 3) dirQueue.push(dir);
+    if (activeTouchId !== null) return;
+    const t = e.changedTouches[0];
+    activeTouchId = t.identifier;
+    const {dx,dy} = relPos(t);
+    applyDir(dx, dy);
   }, {passive:false});
-  btn.addEventListener('mousedown', e => {
-    if (!gameRunning) return;
-    if (dirQueue.length < 3) dirQueue.push(dir);
-  });
-});
+
+  zone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === activeTouchId) {
+        const {dx,dy} = relPos(t);
+        applyDir(dx, dy);
+        break;
+      }
+    }
+  }, {passive:false});
+
+  zone.addEventListener('touchend', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === activeTouchId) {
+        activeTouchId = null;
+        resetKnob();
+        break;
+      }
+    }
+  }, {passive:false});
+
+  zone.addEventListener('touchcancel', () => { activeTouchId = null; resetKnob(); }, {passive:false});
+})();
+
 function showScreen(id) {
   hideAllScreens();
   document.getElementById(id).classList.remove('hidden');
