@@ -3,938 +3,497 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Cat & Mouse</title>
+<title>Control Demos</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;900&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
   body {
     background: #f5e6c8;
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Nunito', sans-serif;
-    overflow: hidden;
+    padding: 16px 12px;
+    gap: 16px;
     user-select: none;
   }
 
-  #game-wrap {
-    position: relative;
+  h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(18px, 5vw, 26px);
+    color: #3d2b1f;
+    text-align: center;
+  }
+
+  .demos {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .demo-card {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
-  }
-
-  #hud {
-    display: flex;
-    gap: 18px;
-    align-items: center;
-    font-family: 'Fredoka One', cursive;
-    font-size: clamp(14px, 3vw, 20px);
-    color: #3d2b1f;
-    background: rgba(255,255,255,0.55);
-    border: 3px solid #3d2b1f;
-    border-radius: 50px;
-    padding: 6px 20px;
-    box-shadow: 3px 3px 0 #3d2b1f;
-  }
-
-  .hud-item { display: flex; align-items: center; gap: 5px; }
-  .hud-label { font-size: 0.75em; opacity: 0.7; font-family: 'Nunito', sans-serif; font-weight: 700; }
-
-  #canvas {
-    border: 4px solid #3d2b1f;
-    border-radius: 16px;
-    box-shadow: 6px 6px 0 #3d2b1f;
-    cursor: none;
-    touch-action: none;
-    display: block;
-  }
-
-  /* Overlay screens */
-  .screen {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    gap: 12px;
-    padding: 24px;
-    text-align: center;
-    z-index: 10;
-    touch-action: auto;
-  }
-
-  .screen.hidden {
-    pointer-events: none !important;
-  }
-
-  #screen-start { background: rgba(245,230,200,0.97); }
-  #screen-gameover { background: rgba(245,230,200,0.97); }
-  #screen-wave { background: rgba(245,230,200,0.97); }
-  #screen-close { background: rgba(245,230,200,0.97); }
-
-  .screen-title {
-    font-family: 'Fredoka One', cursive;
-    font-size: clamp(28px, 7vw, 52px);
-    color: #3d2b1f;
-    text-shadow: 3px 3px 0 rgba(0,0,0,0.15);
-    line-height: 1.1;
-  }
-
-  .screen-sub {
-    font-size: clamp(13px, 3vw, 17px);
-    color: #5a3e2b;
-    font-weight: 700;
-    max-width: 300px;
-  }
-
-  .btn {
-    font-family: 'Fredoka One', cursive;
-    font-size: clamp(16px, 4vw, 22px);
-    color: #fff;
-    background: #e05c2a;
-    border: 3px solid #3d2b1f;
-    border-radius: 50px;
-    padding: 10px 32px;
-    cursor: pointer;
-    box-shadow: 3px 3px 0 #3d2b1f;
-    transition: transform 0.1s, box-shadow 0.1s;
-  }
-  .btn:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 #3d2b1f; }
-  .btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #3d2b1f; }
-
-  .btn-secondary {
-    background: #f0b429;
-  }
-
-  .stat-row {
-    display: flex;
-    gap: 20px;
-    font-family: 'Fredoka One', cursive;
-    color: #3d2b1f;
-  }
-
-  .stat-box {
-    background: rgba(255,255,255,0.6);
-    border: 2.5px solid #3d2b1f;
-    border-radius: 12px;
-    padding: 8px 16px;
-    min-width: 80px;
-    box-shadow: 2px 2px 0 #3d2b1f;
-  }
-  .stat-box .val { font-size: clamp(20px,5vw,30px); }
-  .stat-box .lbl { font-size: 11px; opacity: 0.65; font-family: 'Nunito', sans-serif; }
-
-  /* skins row */
-  #skins-row {
-    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
-  }
-  .skin-badge {
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    border: 2.5px solid #3d2b1f;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px;
     background: rgba(255,255,255,0.5);
-    box-shadow: 2px 2px 0 #3d2b1f;
-    opacity: 0.4;
-    filter: grayscale(1);
-    transition: all 0.3s;
+    border: 3px solid #3d2b1f;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 4px 4px 0 #3d2b1f;
   }
-  .skin-badge.unlocked { opacity: 1; filter: none; }
-  .skin-badge .skin-score { font-size: 9px; font-family:'Nunito',sans-serif; position:absolute; bottom:-14px; white-space:nowrap; color:#3d2b1f; font-weight:700; }
 
-  .hidden { display: none !important; }
-
-  #daily-badge {
-    background: #27ae60;
-    color: #fff;
-    border-radius: 20px;
-    padding: 4px 12px;
+  .demo-label {
     font-family: 'Fredoka One', cursive;
-    font-size: 13px;
-    border: 2px solid #1e8449;
-    box-shadow: 2px 2px 0 #1e8449;
-  }
-
-  #combo-display {
-    position: absolute;
-    font-family: 'Fredoka One', cursive;
-    font-size: 28px;
-    color: #e05c2a;
-    pointer-events: none;
-    z-index: 20;
-    text-shadow: 2px 2px 0 #fff, 0 0 8px rgba(224,92,42,0.5);
-    animation: popUp 0.8s ease-out forwards;
-  }
-
-  @keyframes popUp {
-    0%   { transform: scale(0.5) translateY(0); opacity: 1; }
-    50%  { transform: scale(1.3) translateY(-20px); opacity: 1; }
-    100% { transform: scale(1)   translateY(-50px); opacity: 0; }
-  }
-
-  #pb-badge {
-    position: absolute;
-    top: 10px; left: 50%; transform: translateX(-50%);
-    font-family: 'Fredoka One', cursive;
-    font-size: 14px;
-    background: #f0b429;
-    border: 2px solid #3d2b1f;
-    border-radius: 20px;
-    padding: 3px 14px;
+    font-size: clamp(14px, 4vw, 18px);
     color: #3d2b1f;
+    text-align: center;
+  }
+
+  .demo-sub {
+    font-size: clamp(11px, 2.8vw, 13px);
+    color: #7a5c3e;
+    font-weight: 700;
+    text-align: center;
+    max-width: 180px;
+  }
+
+  canvas {
+    border: 3px solid #3d2b1f;
+    border-radius: 12px;
+    box-shadow: 3px 3px 0 #3d2b1f;
+    display: block;
+    touch-action: none;
+  }
+
+  .feel-badge {
+    font-size: 12px;
+    font-weight: 900;
+    padding: 3px 12px;
+    border-radius: 20px;
+    border: 2px solid #3d2b1f;
     box-shadow: 2px 2px 0 #3d2b1f;
-    z-index: 30;
-    animation: slideDown 0.4s ease-out;
   }
-  @keyframes slideDown { from { top:-30px; opacity:0; } to { top:10px; opacity:1; } }
-
-  #touch-hint {
-    font-size: 12px;
-    color: #8a6a50;
-    font-weight: 700;
-    margin-top: -4px;
-  }
-
-  /* ── Tap-to-move hint ── */
-  #touch-hint {
-    font-size: 12px;
-    color: #8a6a50;
-    font-weight: 700;
-    margin-top: -4px;
-  }
+  .feel-1 { background: #f0b429; color: #3d2b1f; }
+  .feel-2 { background: #27ae60; color: #fff; }
 </style>
 </head>
 <body>
 
-<div id="game-wrap">
-  <div id="hud">
-    <div class="hud-item"><span>🐱</span><span id="hud-lives">❤️❤️❤️</span></div>
-    <div class="hud-item"><span class="hud-label">SCORE</span><span id="hud-score">0</span></div>
-    <div class="hud-item"><span class="hud-label">BEST</span><span id="hud-best">0</span></div>
-    <div class="hud-item"><span class="hud-label">LVL</span><span id="hud-level">1</span></div>
+<h1>🐱 Pick Your Control Style</h1>
+
+<div class="demos">
+
+  <!-- OPTION 1: Floating Joystick -->
+  <div class="demo-card">
+    <div class="demo-label">Option 1<br>Floating Joystick</div>
+    <div class="demo-sub">Touch anywhere → joystick spawns under your thumb</div>
+    <canvas id="c1"></canvas>
+    <div class="feel-badge feel-1">⭕ Visible control zone</div>
   </div>
 
-  <div style="position:relative;">
-    <canvas id="canvas"></canvas>
-
-    <!-- Start Screen -->
-    <div class="screen" id="screen-start">
-      <div class="screen-title">🐱 Cat &<br>Mouse 🐭</div>
-      <div class="screen-sub">Catch all the mice before time runs out!<br>Build combos for big multipliers!</div>
-      <div id="skins-row"></div>
-      <button class="btn" id="btn-start">Play!</button>
-      <div id="touch-hint">Arrow keys / WASD or swipe to move</div>
-      <div id="daily-badge" id="daily-badge-start">📅 Daily Challenge Active!</div>
-    </div>
-
-    <!-- Wave Clear Screen -->
-    <div class="screen hidden" id="screen-wave">
-      <div class="screen-title">Wave<br>Cleared! 🎉</div>
-      <div class="stat-row">
-        <div class="stat-box"><div class="val" id="wave-score">0</div><div class="lbl">Score</div></div>
-        <div class="stat-box"><div class="val" id="wave-combo">×1</div><div class="lbl">Best Combo</div></div>
-        <div class="stat-box"><div class="val" id="wave-level">1</div><div class="lbl">Next Wave</div></div>
-      </div>
-      <button class="btn" id="btn-next">Next Wave →</button>
-    </div>
-
-    <!-- Game Over Screen -->
-    <div class="screen hidden" id="screen-gameover">
-      <div class="screen-title" id="go-title">Game<br>Over! 😿</div>
-      <div class="screen-sub" id="go-sub">The mice escaped!</div>
-      <div class="stat-row">
-        <div class="stat-box"><div class="val" id="go-score">0</div><div class="lbl">Score</div></div>
-        <div class="stat-box"><div class="val" id="go-best">0</div><div class="lbl">Best</div></div>
-        <div class="stat-box"><div class="val" id="go-level">1</div><div class="lbl">Level</div></div>
-      </div>
-      <div id="skins-row-go"></div>
-      <button class="btn" id="btn-retry">Try Again!</button>
-      <button class="btn btn-secondary" id="btn-menu">Menu</button>
-    </div>
-
-    <!-- So Close Screen -->
-    <div class="screen hidden" id="screen-close">
-      <div class="screen-title">So Close…<br>😤</div>
-      <div class="screen-sub" id="close-sub">You were just a whisker away from your best!</div>
-      <div class="stat-row">
-        <div class="stat-box"><div class="val" id="close-score">0</div><div class="lbl">Score</div></div>
-        <div class="stat-box"><div class="val" id="close-best">0</div><div class="lbl">Best</div></div>
-      </div>
-      <button class="btn" id="btn-retry2">Revenge! 😾</button>
-    </div>
+  <!-- OPTION 2: Gesture Anywhere -->
+  <div class="demo-card">
+    <div class="demo-label">Option 2<br>Drag Anywhere</div>
+    <div class="demo-sub">Drag in any direction from wherever you touch</div>
+    <canvas id="c2"></canvas>
+    <div class="feel-badge feel-2">👻 No UI — pure gesture</div>
   </div>
 
-  <div id="touch-hint">Tap anywhere to move · Arrow keys on desktop</div>
 </div>
 
 <script>
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
-const CELL = 32;
-const BASE_COLS = 14, BASE_ROWS = 14;
-const BASE_SPEED = 110; // ms per step
-const COMBO_WINDOW = 2000; // ms
+// ─── SHARED GRID ENGINE ───────────────────────────────────────────────────────
+const COLS = 10, ROWS = 10;
+const STEP_MS = 130;
 
-const SKINS = [
-  { emoji: '🐱', name: 'Classic',  score: 0 },
-  { emoji: '😸', name: 'Happy',    score: 100 },
-  { emoji: '😼', name: 'Smirk',    score: 250 },
-  { emoji: '🐯', name: 'Tiger',    score: 500 },
-  { emoji: '🦁', name: 'Lion',     score: 1000 },
-];
+function makeGrid(canvasEl) {
+  const maxSide = Math.min(
+    (window.innerWidth / 2) - 56,
+    window.innerHeight * 0.48
+  );
+  const cell = Math.max(Math.floor(maxSide / COLS), 24);
+  canvasEl.width  = COLS * cell;
+  canvasEl.height = ROWS * cell;
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+  const ctx = canvasEl.getContext('2d');
 
-let cols, rows, cellSize;
-let catX, catY, catDir = {x:1,y:0};
-let mice = [], walls = [];
-let score = 0, lives = 3, level = 1;
-let combo = 1, lastCatchTime = 0, bestCombo = 1;
-let gameRunning = false;
-let animFrame;
-let lastStepTime = 0;
-let stepInterval;
-let flashAlpha = 0;
-let bestScore = +localStorage.getItem('catmouse_best') || 0;
-let dailyDone = localStorage.getItem('catmouse_daily') === new Date().toDateString();
-let currentSkin = 0;
-let particles = [];
-let dirQueue = [];
-let activePath = []; // BFS path: array of {x,y} cells remaining
+  // Simple border walls
+  const walls = new Set();
+  for (let x=0;x<COLS;x++) { walls.add(`${x},0`); walls.add(`${x},${ROWS-1}`); }
+  for (let y=1;y<ROWS-1;y++) { walls.add(`0,${y}`); walls.add(`${COLS-1},${y}`); }
+  // A few inner walls
+  [[3,3],[3,4],[5,6],[6,6],[7,3],[4,7]].forEach(([x,y]) => walls.add(`${x},${y}`));
 
-// Audio
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(type) {
-  try {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    if (type === 'catch') {
-      o.frequency.setValueAtTime(600, audioCtx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.15);
-      g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-    } else if (type === 'combo') {
-      o.type = 'square';
-      o.frequency.setValueAtTime(800, audioCtx.currentTime);
-      o.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.08);
-      o.frequency.setValueAtTime(1400, audioCtx.currentTime + 0.16);
-      g.gain.setValueAtTime(0.15, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-    } else if (type === 'die') {
-      o.frequency.setValueAtTime(400, audioCtx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.4);
-      g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-    }
-    o.start(); o.stop(audioCtx.currentTime + 0.5);
-  } catch(e){}
-}
+  const isWall = (x,y) => walls.has(`${x},${y}`);
+  const isFree = (x,y) => x>=0&&y>=0&&x<COLS&&y<ROWS&&!isWall(x,y);
 
-// ─── SIZING ───────────────────────────────────────────────────────────────────
-function resize() {
-  const maxW = Math.min(window.innerWidth - 32, 480);
-  const maxH = Math.min(window.innerHeight - 120, 480);
-  const sz = Math.floor(Math.min(maxW, maxH) / BASE_COLS);
-  cellSize = Math.max(sz, 20);
-  cols = BASE_COLS; rows = BASE_ROWS;
-  canvas.width  = cols * cellSize;
-  canvas.height = rows * cellSize;
-}
+  let catX=2, catY=2, catDir={x:1,y:0};
+  let miceArr = [{x:7,y:7},{x:8,y:2},{x:5,y:5}];
+  let dirQueue = [];
+  let lastStep = 0;
+  let animId;
 
-// ─── LEVEL GENERATION ─────────────────────────────────────────────────────────
-function buildLevel() {
-  walls = [];
-  const innerW = cols - 2, innerH = rows - 2;
-  // Border walls
-  for (let x = 0; x < cols; x++) { walls.push({x, y:0}); walls.push({x, y:rows-1}); }
-  for (let y = 1; y < rows-1; y++) { walls.push({x:0,y}); walls.push({x:cols-1,y}); }
-  // Internal obstacles based on level
-  const obstacleCount = Math.min(level * 2, 18);
-  const forbidden = new Set();
-  // protect start area
-  for (let dx=-2;dx<=2;dx++) for (let dy=-2;dy<=2;dy++) forbidden.add(`${2+dx},${2+dy}`);
-  for (let i = 0; i < obstacleCount; i++) {
-    let tries = 0;
-    while (tries++ < 50) {
-      const x = 1 + Math.floor(Math.random() * (cols-2));
-      const y = 1 + Math.floor(Math.random() * (rows-2));
-      if (!forbidden.has(`${x},${y}`)) {
-        walls.push({x,y});
-        forbidden.add(`${x},${y}`);
-        break;
+  function step(ts) {
+    if (!lastStep) lastStep = ts;
+    if (ts - lastStep >= STEP_MS) {
+      lastStep = ts;
+      // move cat
+      while (dirQueue.length) {
+        const d = dirQueue.shift();
+        const nx=catX+d.x, ny=catY+d.y;
+        if (isFree(nx,ny)) { catX=nx; catY=ny; catDir=d; break; }
       }
-    }
-  }
-}
-
-function isWall(x, y) { return walls.some(w => w.x===x && w.y===y); }
-function isFree(x, y) { return !isWall(x,y); }
-
-function spawnMice() {
-  mice = [];
-  const count = 2 + Math.min(level - 1, 6);
-  let attempts = 0;
-  while (mice.length < count && attempts++ < 300) {
-    const x = 1 + Math.floor(Math.random()*(cols-2));
-    const y = 1 + Math.floor(Math.random()*(rows-2));
-    if (!isWall(x,y) && !(x===catX&&y===catY) && !mice.some(m=>m.x===x&&m.y===y)) {
-      mice.push({ x, y, dir:{x:0,y:0}, scared: false });
-    }
-  }
-}
-
-function initGame() {
-  buildLevel();
-  catX = 2; catY = 2;
-  catDir = {x:1, y:0};
-  dirQueue = []; activePath = [];
-  spawnMice();
-  score = 0; lives = 3; combo = 1; bestCombo = 1; lastCatchTime = 0;
-  level = 1; particles = [];
-  updateHUD();
-  stepInterval = getStepInterval();
-  lastStepTime = 0;
-}
-
-function getStepInterval() {
-  return Math.max(60, BASE_SPEED - (level - 1) * 10);
-}
-
-// ─── AI ───────────────────────────────────────────────────────────────────────
-function moveMice(ts) {
-  const smartness = Math.min(0.2 + level * 0.08, 0.85); // grows with level
-  mice.forEach(m => {
-    const dx = catX - m.x, dy = catY - m.y;
-    const dist = Math.abs(dx) + Math.abs(dy);
-    m.scared = dist < 5;
-
-    let moves = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
-
-    if (m.scared && Math.random() < smartness) {
-      // flee: pick move that maximises distance
-      moves.sort((a,b) => {
-        const da = Math.abs(catX-(m.x+a.x)) + Math.abs(catY-(m.y+a.y));
-        const db = Math.abs(catX-(m.x+b.x)) + Math.abs(catY-(m.y+b.y));
-        return db - da;
+      // mice wander
+      miceArr.forEach(m => {
+        const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}].sort(()=>Math.random()-0.5);
+        for(const d of dirs){
+          const nx=m.x+d.x,ny=m.y+d.y;
+          if(isFree(nx,ny)){m.x=nx;m.y=ny;break;}
+        }
       });
-    } else {
-      // wander randomly
-      moves.sort(() => Math.random()-0.5);
-    }
-
-    for (const mv of moves) {
-      const nx = m.x + mv.x, ny = m.y + mv.y;
-      if (isFree(nx,ny) && !mice.some(o=>o!==m&&o.x===nx&&o.y===ny)) {
-        m.x = nx; m.y = ny;
-        m.dir = mv;
-        break;
-      }
-    }
-  });
-}
-
-// ─── GAME STEP ────────────────────────────────────────────────────────────────
-function step(ts) {
-  // Move cat: consume next step from activePath, fallback to dirQueue
-  let moved = false;
-
-  // If we have a path, convert next cell into a direction
-  if (activePath.length > 0) {
-    const next = activePath[0];
-    const d = { x: next.x - catX, y: next.y - catY };
-    const nx = catX + d.x, ny = catY + d.y;
-    if (isFree(nx, ny)) {
-      activePath.shift();
-      catX = nx; catY = ny; catDir = d; moved = true;
-    } else {
-      // Path blocked (wall appeared) — clear it
-      activePath = []; dirQueue = [];
-    }
-  } else {
-    // Keyboard fallback
-    while (dirQueue.length) {
-      const d = dirQueue.shift();
-      const nx = catX + d.x, ny = catY + d.y;
-      if (isFree(nx, ny)) {
-        catX = nx; catY = ny; catDir = d; moved = true;
-        break;
-      }
+      // catch
+      miceArr=miceArr.filter(m=>!(m.x===catX&&m.y===catY));
+      if(miceArr.length===0) miceArr=[{x:7,y:7},{x:8,y:2},{x:5,y:5}];
     }
   }
 
-  moveMice(ts);
-
-  // Check catches
-  for (let i = mice.length - 1; i >= 0; i--) {
-    if (mice[i].x === catX && mice[i].y === catY) {
-      const now = ts;
-      if (now - lastCatchTime < COMBO_WINDOW) {
-        combo++;
-      } else {
-        combo = 1;
-      }
-      lastCatchTime = now;
-      bestCombo = Math.max(bestCombo, combo);
-
-      const pts = 10 * combo;
-      score += pts;
-
-      showCombo(pts, combo, catX, catY);
-      spawnParticles(catX, catY, '#e05c2a');
-
-      if (combo >= 2) playSound('combo'); else playSound('catch');
-
-      mice.splice(i,1);
-      flashAlpha = 0.3;
+  function draw() {
+    ctx.clearRect(0,0,canvasEl.width,canvasEl.height);
+    ctx.fillStyle='#f5e6c8'; ctx.fillRect(0,0,canvasEl.width,canvasEl.height);
+    // grid dots
+    ctx.fillStyle='rgba(180,140,100,0.3)';
+    for(let x=0;x<COLS;x++) for(let y=0;y<ROWS;y++){
+      if(!isWall(x,y)){ctx.beginPath();ctx.arc((x+.5)*cell,(y+.5)*cell,1.5,0,Math.PI*2);ctx.fill();}
     }
-  }
-
-  // Check if cat on mouse from mice moving INTO cat
-  // (handled above since we move mice then check)
-
-  updateHUD();
-
-  // All mice caught → wave clear
-  if (mice.length === 0) {
-    endWave();
-    return;
-  }
-}
-
-function endWave() {
-  gameRunning = false;
-  cancelAnimationFrame(animFrame);
-  document.getElementById('wave-score').textContent = score;
-  document.getElementById('wave-combo').textContent = '×' + bestCombo;
-  document.getElementById('wave-level').textContent = level + 1;
-  showScreen('screen-wave');
-}
-
-function nextWave() {
-  level++;
-  buildLevel();
-  catX = 2; catY = 2; catDir = {x:1,y:0}; dirQueue = [];
-  spawnMice();
-  particles = [];
-  combo = 1; lastCatchTime = 0;
-  stepInterval = getStepInterval();
-  gameRunning = true;
-  lastStepTime = 0;
-  hideAllScreens();
-  requestAnimationFrame(gameLoop);
-}
-
-function loseLife(ts) {
-  lives--;
-  playSound('die');
-  flashAlpha = 0.5;
-  spawnParticles(catX, catY, '#ff4444');
-  updateHUD();
-  if (lives <= 0) {
-    endGame();
-    return;
-  }
-  // reset cat position
-  catX = 2; catY = 2; catDir = {x:1,y:0}; dirQueue = [];
-  combo = 1;
-}
-
-function endGame() {
-  gameRunning = false;
-  cancelAnimationFrame(animFrame);
-  const isNew = score > bestScore;
-  const isSoClose = !isNew && (score > 0) && (bestScore - score < 50) && bestScore > 0;
-
-  if (isNew) {
-    bestScore = score;
-    localStorage.setItem('catmouse_best', bestScore);
-    // Daily challenge
-    if (!dailyDone) {
-      dailyDone = true;
-      localStorage.setItem('catmouse_daily', new Date().toDateString());
-    }
-  }
-
-  renderSkinBadges('skins-row-go');
-
-  if (isSoClose) {
-    document.getElementById('close-score').textContent = score;
-    document.getElementById('close-best').textContent  = bestScore;
-    document.getElementById('close-sub').textContent   = `Only ${bestScore-score} points from your best!`;
-    showScreen('screen-close');
-  } else {
-    document.getElementById('go-title').textContent = isNew ? 'New Best! 🏆' : 'Game Over! 😿';
-    document.getElementById('go-sub').textContent  = isNew ? 'You set a new record!' : 'The mice escaped!';
-    document.getElementById('go-score').textContent = score;
-    document.getElementById('go-best').textContent  = bestScore;
-    document.getElementById('go-level').textContent = level;
-    showScreen('screen-gameover');
-  }
-}
-
-// ─── HUD ──────────────────────────────────────────────────────────────────────
-function updateHUD() {
-  document.getElementById('hud-score').textContent = score;
-  document.getElementById('hud-best').textContent  = bestScore;
-  document.getElementById('hud-level').textContent = level;
-  let hearts = '';
-  for (let i=0;i<3;i++) hearts += i < lives ? '❤️' : '🖤';
-  document.getElementById('hud-lives').textContent = hearts;
-}
-
-// ─── PARTICLES ────────────────────────────────────────────────────────────────
-function spawnParticles(gx, gy, color) {
-  for (let i=0;i<12;i++) {
-    const angle = Math.random()*Math.PI*2;
-    const speed = 1.5 + Math.random()*2.5;
-    particles.push({
-      x: (gx + 0.5) * cellSize,
-      y: (gy + 0.5) * cellSize,
-      vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
-      life: 1, decay: 0.04 + Math.random()*0.03,
-      r: 3+Math.random()*4, color
-    });
-  }
-}
-
-function updateParticles() {
-  for (let i=particles.length-1;i>=0;i--) {
-    const p = particles[i];
-    p.x += p.vx; p.y += p.vy;
-    p.vy += 0.1;
-    p.life -= p.decay;
-    if (p.life <= 0) particles.splice(i,1);
-  }
-}
-
-// ─── COMBO POPUP ──────────────────────────────────────────────────────────────
-function showCombo(pts, mult, gx, gy) {
-  const el = document.createElement('div');
-  el.className = 'combo-display';
-  el.id = 'combo-display';
-  el.style.cssText = `
-    position:absolute;
-    left:${(gx+0.5)*cellSize - 30}px;
-    top:${gy*cellSize}px;
-    font-family:'Fredoka One',cursive;
-    font-size:${mult > 1 ? 26 : 20}px;
-    color:${mult>=3?'#e05c2a':mult>=2?'#f0b429':'#27ae60'};
-    pointer-events:none;
-    z-index:20;
-    text-shadow: 2px 2px 0 #fff;
-    animation: popUp 0.9s ease-out forwards;
-    white-space: nowrap;
-  `;
-  el.textContent = mult > 1 ? `×${mult} +${pts}` : `+${pts}`;
-  canvas.parentElement.appendChild(el);
-  setTimeout(() => el.remove(), 900);
-}
-
-// ─── DRAW ─────────────────────────────────────────────────────────────────────
-function drawCell(x, y, fillStyle, strokeStyle) {
-  const px = x*cellSize, py = y*cellSize;
-  ctx.fillStyle = fillStyle;
-  ctx.strokeStyle = strokeStyle || fillStyle;
-  ctx.lineWidth = 2;
-  // wobbly rect
-  ctx.beginPath();
-  const w=cellSize, h=cellSize, r=Math.min(6, cellSize*0.2);
-  ctx.roundRect(px+1,py+1,w-2,h-2,r);
-  ctx.fill();
-  if (strokeStyle) { ctx.stroke(); }
-}
-
-function drawEmoji(emoji, cx, cy, size) {
-  ctx.save();
-  ctx.font = `${size}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(emoji, cx, cy);
-  ctx.restore();
-}
-
-function draw(ts) {
-  // Background
-  ctx.fillStyle = '#f5e6c8';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // Grid dots
-  ctx.fillStyle = 'rgba(180,140,100,0.3)';
-  for (let x=0;x<cols;x++) for (let y=0;y<rows;y++) {
-    if (!isWall(x,y)) {
+    // walls
+    walls.forEach(k=>{
+      const [wx,wy]=k.split(',').map(Number);
+      const border=wx===0||wy===0||wx===COLS-1||wy===ROWS-1;
+      ctx.fillStyle=border?'#3d2b1f':'#7a5c3e';
       ctx.beginPath();
-      ctx.arc(x*cellSize+cellSize/2, y*cellSize+cellSize/2, 1.5, 0, Math.PI*2);
+      ctx.roundRect(wx*cell+1,wy*cell+1,cell-2,cell-2,4);
       ctx.fill();
-    }
-  }
-
-  // Walls
-  walls.forEach(w => {
-    const isBorder = w.x===0||w.y===0||w.x===cols-1||w.y===rows-1;
-    drawCell(w.x, w.y, isBorder?'#3d2b1f':'#7a5c3e', null);
-  });
-
-  // Mice
-  mice.forEach(m => {
-    const cx = (m.x+0.5)*cellSize, cy = (m.y+0.5)*cellSize;
-    if (m.scared) {
-      // scared glow
-      ctx.save();
-      ctx.shadowColor = '#f0b429';
-      ctx.shadowBlur = 8;
-      drawEmoji('🐭', cx, cy, cellSize*0.7);
-      ctx.restore();
-    } else {
-      drawEmoji('🐭', cx, cy, cellSize*0.7);
-    }
-  });
-
-  // Path trail
-  if (activePath.length > 0) {
-    activePath.forEach((cell, i) => {
-      const alpha = 0.55 - (i / activePath.length) * 0.4;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#e05c2a';
-      const cx = (cell.x + 0.5) * cellSize, cy = (cell.y + 0.5) * cellSize;
-      const r = cellSize * 0.13;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
     });
-    // Target marker
-    const tgt = activePath[activePath.length - 1];
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.strokeStyle = '#e05c2a';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.arc((tgt.x + 0.5) * cellSize, (tgt.y + 0.5) * cellSize, cellSize * 0.38, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    // mice
+    ctx.font=`${cell*.7}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    miceArr.forEach(m=>ctx.fillText('🐭',(m.x+.5)*cell,(m.y+.5)*cell));
+    // cat
+    ctx.font=`${cell*.82}px serif`;
+    ctx.fillText('🐱',(catX+.5)*cell,(catY+.5)*cell);
   }
 
-  // Cat
-  const catCX = (catX+0.5)*cellSize, catCY = (catY+0.5)*cellSize;
-  ctx.save();
-  ctx.shadowColor = '#e05c2a';
-  ctx.shadowBlur = 10;
-  drawEmoji(SKINS[currentSkin].emoji, catCX, catCY, cellSize*0.82);
-  ctx.restore();
+  function loop(ts) {
+    step(ts); draw(); animId = requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
 
-  // Particles
-  particles.forEach(p => {
+  return { isFree, enqueue: d => { if(dirQueue.length<3) dirQueue.push(d); }, cell, get catX(){return catX;}, get catY(){return catY;} };
+}
+
+// ─── OPTION 1: FLOATING JOYSTICK ─────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('c1');
+  const grid   = makeGrid(canvas);
+  const ctx    = canvas.getContext('2d');
+  const cell   = grid.cell;
+
+  const JOYSTICK_R = Math.min(cell * 2.2, 52); // ring radius
+  const KNOB_R     = Math.min(cell * 1.0, 24);
+  const DEAD       = 10;
+
+  let active = false;
+  let originX = 0, originY = 0;
+  let knobX = 0, knobY = 0;
+  let lastDir = null;
+  let touchId = null;
+
+  function getDir(dx, dy) {
+    if (Math.sqrt(dx*dx+dy*dy) < DEAD) return null;
+    return Math.abs(dx)>=Math.abs(dy)
+      ? (dx>0?{x:1,y:0}:{x:-1,y:0})
+      : (dy>0?{x:0,y:1}:{x:0,y:-1});
+  }
+
+  function drawJoystick() {
+    if (!active) return;
+    // outer ring
     ctx.save();
-    ctx.globalAlpha = p.life;
-    ctx.fillStyle = p.color;
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = '#e05c2a';
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.arc(originX, originY, JOYSTICK_R, 0, Math.PI*2);
     ctx.fill();
     ctx.restore();
-  });
 
-  // Flash
-  if (flashAlpha > 0) {
-    ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    flashAlpha -= 0.03;
-    if (flashAlpha < 0) flashAlpha = 0;
-  }
-}
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = '#e05c2a';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([5,4]);
+    ctx.beginPath();
+    ctx.arc(originX, originY, JOYSTICK_R, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
 
-// ─── GAME LOOP ────────────────────────────────────────────────────────────────
-function gameLoop(ts) {
-  if (!gameRunning) return;
-  animFrame = requestAnimationFrame(gameLoop);
+    // knob
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#e05c2a';
+    ctx.shadowColor = '#e05c2a';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(knobX, knobY, KNOB_R, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
 
-  if (!lastStepTime) lastStepTime = ts;
-  const elapsed = ts - lastStepTime;
-
-  if (elapsed >= stepInterval) {
-    lastStepTime = ts;
-    step(ts);
-  }
-
-  updateParticles();
-  draw(ts);
-}
-
-// ─── INPUT ────────────────────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (!gameRunning) return;
-  const map = {
-    ArrowLeft:{x:-1,y:0}, ArrowRight:{x:1,y:0},
-    ArrowUp:{x:0,y:-1},   ArrowDown:{x:0,y:1},
-    a:{x:-1,y:0}, d:{x:1,y:0}, w:{x:0,y:-1}, s:{x:0,y:1},
-    A:{x:-1,y:0}, D:{x:1,y:0}, W:{x:0,y:-1}, S:{x:0,y:1},
-  };
-  const dir = map[e.key];
-  if (dir) { e.preventDefault(); if (dirQueue.length < 3) dirQueue.push(dir); }
-});
-
-// ─── BFS PATHFINDER ───────────────────────────────────────────────────────────
-function bfsPath(sx, sy, tx, ty) {
-  if (sx === tx && sy === ty) return [];
-  const visited = new Set();
-  const queue = [{ x: sx, y: sy, path: [] }];
-  visited.add(`${sx},${sy}`);
-  const DIRS = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
-  while (queue.length) {
-    const { x, y, path } = queue.shift();
-    for (const d of DIRS) {
-      const nx = x + d.x, ny = y + d.y;
-      const key = `${nx},${ny}`;
-      if (visited.has(key)) continue;
-      if (!isFree(nx, ny)) continue;
-      const newPath = [...path, { x: nx, y: ny }];
-      if (nx === tx && ny === ty) return newPath;
-      visited.add(key);
-      queue.push({ x: nx, y: ny, path: newPath });
+    // direction arrow in knob
+    if (lastDir) {
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${KNOB_R}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const arrows = {
+        '1,0':'▶','−1,0':'◀','0,1':'▼','0,−1':'▲',
+        '1,0_':'▶','-1,0':'◀'
+      };
+      const key = `${lastDir.x},${lastDir.y}`;
+      const map = {'1,0':'▶','-1,0':'◀','0,1':'▼','0,-1':'▲'};
+      ctx.fillText(map[key]||'', knobX, knobY);
+      ctx.restore();
     }
   }
-  return []; // no path
-}
 
-// ─── CANVAS TAP → PATHFIND ────────────────────────────────────────────────────
-function handleCanvasTap(clientX, clientY) {
-  if (!gameRunning) return;
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width  / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const px = (clientX - rect.left) * scaleX;
-  const py = (clientY - rect.top)  * scaleY;
-  const tx = Math.floor(px / cellSize);
-  const ty = Math.floor(py / cellSize);
-  if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) return;
-  if (!isFree(tx, ty)) return;
-  const path = bfsPath(catX, catY, tx, ty);
-  if (path.length > 0) {
-    activePath = path;
-    dirQueue = [];
+  // Patch draw to overlay joystick
+  const origDraw = ctx.clearRect.bind(ctx);
+  // We hook into rAF by drawing on top each frame
+  const origLoop = requestAnimationFrame;
+  // Instead: use an overlay canvas approach — just append joystick draw to grid's loop
+  // We do this by monkey-patching: store original and wrap
+  const _orig = CanvasRenderingContext2D.prototype.clearRect;
+  // Actually simplest: just run our own rAF on top
+  function overlayLoop() {
+    drawJoystick();
+    requestAnimationFrame(overlayLoop);
   }
-}
+  requestAnimationFrame(overlayLoop);
 
-canvas.addEventListener('click', e => handleCanvasTap(e.clientX, e.clientY));
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  if (e.touches.length === 1) handleCanvasTap(e.touches[0].clientX, e.touches[0].clientY);
-}, { passive: false });
+  function onStart(cx, cy, id) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = (cx - rect.left) * (canvas.width / rect.width);
+    const sy = (cy - rect.top)  * (canvas.height / rect.height);
+    active = true;
+    touchId = id;
+    originX = sx; originY = sy;
+    knobX = sx; knobY = sy;
+    lastDir = null;
+  }
 
-
-
-
-function showScreen(id) {
-  hideAllScreens();
-  document.getElementById(id).classList.remove('hidden');
-}
-function hideAllScreens() {
-  ['screen-start','screen-wave','screen-gameover','screen-close'].forEach(id => {
-    document.getElementById(id).classList.add('hidden');
-  });
-}
-
-// ─── SKIN BADGES ──────────────────────────────────────────────────────────────
-function renderSkinBadges(containerId) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  container.innerHTML = '';
-  SKINS.forEach((skin, i) => {
-    const unlocked = bestScore >= skin.score;
-    const div = document.createElement('div');
-    div.className = 'skin-badge' + (unlocked ? ' unlocked' : '');
-    div.style.position = 'relative';
-    div.title = unlocked ? skin.name : `Unlock at ${skin.score} pts`;
-    div.innerHTML = `<span>${unlocked ? skin.emoji : '❓'}</span>`;
-    if (unlocked) {
-      div.addEventListener('click', () => {
-        currentSkin = i;
-        document.querySelectorAll('.skin-badge').forEach((b,j) => {
-          b.style.outline = j===i ? '3px solid #e05c2a' : '';
-        });
-      });
-      if (i === currentSkin) div.style.outline = '3px solid #e05c2a';
-    } else {
-      const lbl = document.createElement('div');
-      lbl.className = 'skin-score';
-      lbl.textContent = `${skin.score}pts`;
-      div.appendChild(lbl);
+  function onMove(cx, cy, id) {
+    if (!active || id !== touchId) return;
+    const rect = canvas.getBoundingClientRect();
+    const sx = (cx - rect.left) * (canvas.width / rect.width);
+    const sy = (cy - rect.top)  * (canvas.height / rect.height);
+    const dx = sx - originX, dy = sy - originY;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const clamped = Math.min(dist, JOYSTICK_R);
+    const angle = Math.atan2(dy, dx);
+    knobX = originX + Math.cos(angle)*clamped;
+    knobY = originY + Math.sin(angle)*clamped;
+    const dir = getDir(dx, dy);
+    if (dir && (!lastDir || lastDir.x!==dir.x || lastDir.y!==dir.y)) {
+      grid.enqueue(dir);
+      lastDir = dir;
     }
-    container.appendChild(div);
-  });
-}
-
-// ─── DAILY CHALLENGE ─────────────────────────────────────────────────────────
-function checkDailyBadge() {
-  const badge = document.getElementById('daily-badge');
-  if (!badge) return;
-  if (dailyDone) {
-    badge.textContent = '✅ Daily Done!';
-    badge.style.background = '#27ae60';
   }
-}
 
-// ─── BUTTON BINDINGS ──────────────────────────────────────────────────────────
-document.getElementById('btn-start').addEventListener('click', () => {
-  audioCtx.resume();
-  initGame();
-  hideAllScreens();
-  gameRunning = true;
-  requestAnimationFrame(gameLoop);
-});
+  function onEnd(id) {
+    if (id !== touchId) return;
+    active = false; touchId = null; lastDir = null;
+  }
 
-document.getElementById('btn-next').addEventListener('click', () => {
-  nextWave();
-});
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (active) return;
+    const t = e.changedTouches[0];
+    onStart(t.clientX, t.clientY, t.identifier);
+  }, {passive:false});
 
-document.getElementById('btn-retry').addEventListener('click', () => {
-  audioCtx.resume();
-  initGame();
-  hideAllScreens();
-  gameRunning = true;
-  requestAnimationFrame(gameLoop);
-});
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) onMove(t.clientX, t.clientY, t.identifier);
+  }, {passive:false});
 
-document.getElementById('btn-menu').addEventListener('click', () => {
-  showScreen('screen-start');
-  renderSkinBadges('skins-row');
-  checkDailyBadge();
-  updateHUD();
-});
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) onEnd(t.identifier);
+  }, {passive:false});
 
-document.getElementById('btn-retry2').addEventListener('click', () => {
-  audioCtx.resume();
-  initGame();
-  hideAllScreens();
-  gameRunning = true;
-  requestAnimationFrame(gameLoop);
-});
+  canvas.addEventListener('touchcancel', e => {
+    for (const t of e.changedTouches) onEnd(t.identifier);
+  }, {passive:false});
 
-// ─── INIT ────────────────────────────────────────────────────────────────────
-resize();
-window.addEventListener('resize', () => { resize(); });
-renderSkinBadges('skins-row');
-checkDailyBadge();
-updateHUD();
+  // Mouse fallback for desktop testing
+  let mouseDown = false;
+  canvas.addEventListener('mousedown', e => { mouseDown=true; onStart(e.clientX,e.clientY,'mouse'); });
+  canvas.addEventListener('mousemove', e => { if(mouseDown) onMove(e.clientX,e.clientY,'mouse'); });
+  canvas.addEventListener('mouseup',   () => { mouseDown=false; onEnd('mouse'); });
+})();
 
-// Draw static frame on start
-buildLevel();
-catX=2; catY=2; catDir={x:1,y:0};
-spawnMice();
-draw(0);
-showScreen('screen-start');
+// ─── OPTION 2: DRAG ANYWHERE ──────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('c2');
+  const grid   = makeGrid(canvas);
+  const ctx    = canvas.getContext('2d');
+  const cell   = grid.cell;
+
+  const DEAD = 14; // px before direction locks
+  const TRAIL_LENGTH = 40; // px trail line
+
+  let active = false;
+  let startX = 0, startY = 0;
+  let curX = 0, curY = 0;
+  let lockedDir = null;
+  let touchId = null;
+  let lastDir = null;
+
+  function getDir(dx, dy) {
+    if (Math.sqrt(dx*dx+dy*dy) < DEAD) return null;
+    return Math.abs(dx)>=Math.abs(dy)
+      ? (dx>0?{x:1,y:0}:{x:-1,y:0})
+      : (dy>0?{x:0,y:1}:{x:0,y:-1});
+  }
+
+  function drawGesture() {
+    if (!active) return;
+    const dx = curX - startX, dy = curY - startY;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+
+    // Draw a subtle ripple at touch origin
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#27ae60';
+    ctx.beginPath();
+    ctx.arc(startX, startY, Math.min(dist * 0.8, cell*1.5), 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Direction line from origin
+    if (dist > DEAD) {
+      const angle = Math.atan2(dy, dx);
+      const ex = startX + Math.cos(angle) * Math.min(dist, TRAIL_LENGTH);
+      const ey = startY + Math.sin(angle) * Math.min(dist, TRAIL_LENGTH);
+
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.strokeStyle = '#27ae60';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+
+      // Arrowhead
+      ctx.fillStyle = '#27ae60';
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-10, -6);
+      ctx.lineTo(-10,  6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.restore();
+    }
+
+    // Small dot at touch start
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = '#27ae60';
+    ctx.beginPath();
+    ctx.arc(startX, startY, 6, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function overlayLoop() {
+    drawGesture();
+    requestAnimationFrame(overlayLoop);
+  }
+  requestAnimationFrame(overlayLoop);
+
+  function toCanvas(cx, cy) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (cx - rect.left) * (canvas.width / rect.width),
+      y: (cy - rect.top)  * (canvas.height / rect.height),
+    };
+  }
+
+  function onStart(cx, cy, id) {
+    const p = toCanvas(cx, cy);
+    active = true; touchId = id;
+    startX = p.x; startY = p.y;
+    curX = p.x; curY = p.y;
+    lockedDir = null; lastDir = null;
+  }
+
+  function onMove(cx, cy, id) {
+    if (!active || id !== touchId) return;
+    const p = toCanvas(cx, cy);
+    curX = p.x; curY = p.y;
+    const dx = curX - startX, dy = curY - startY;
+    const dir = getDir(dx, dy);
+    if (dir && (!lastDir || lastDir.x!==dir.x || lastDir.y!==dir.y)) {
+      grid.enqueue(dir);
+      lastDir = dir;
+      // Re-anchor start so continuous drags feel responsive
+      startX = curX; startY = curY;
+    }
+  }
+
+  function onEnd(id) {
+    if (id !== touchId) return;
+    active = false; touchId = null; lastDir = null;
+  }
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (active) return;
+    const t = e.changedTouches[0];
+    onStart(t.clientX, t.clientY, t.identifier);
+  }, {passive:false});
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) onMove(t.clientX, t.clientY, t.identifier);
+  }, {passive:false});
+
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) onEnd(t.identifier);
+  }, {passive:false});
+
+  canvas.addEventListener('touchcancel', e => {
+    for (const t of e.changedTouches) onEnd(t.identifier);
+  }, {passive:false});
+
+  // Mouse fallback
+  let mouseDown = false;
+  canvas.addEventListener('mousedown', e => { mouseDown=true; onStart(e.clientX,e.clientY,'mouse'); });
+  canvas.addEventListener('mousemove', e => { if(mouseDown) onMove(e.clientX,e.clientY,'mouse'); });
+  canvas.addEventListener('mouseup',   () => { mouseDown=false; onEnd('mouse'); });
+})();
 </script>
 </body>
 </html>
