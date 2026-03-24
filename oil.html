@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oil Trader - Trading Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            background: #f5f7fa;
+            color: #1a1a1a;
+        }
+
+        .container {
+            display: grid;
+            grid-template-rows: auto 1fr auto auto;
+            height: 100vh;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            gap: 0;
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #003d7a 0%, #004a94 100%);
+            color: white;
+            padding: 12px 16px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 0;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* MAIN CONTENT */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 0;
+            min-height: 0;
+        }
+
+        /* NEWS SECTION */
+        .news-section {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .news-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .news-headline {
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.3;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .news-description {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .news-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 11px;
+            color: #888;
+        }
+
+        .meta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #f0f0f0;
+            padding: 3px 6px;
+            border-radius: 3px;
+        }
+
+        /* PRICE SECTION */
+        .price-section {
+            padding: 12px 16px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .price-label {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .price-display {
+            font-size: 36px;
+            font-weight: 700;
+            color: #003d7a;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 6px;
+        }
+
+        .price-change {
+            font-size: 13px;
+            font-weight: 600;
+            height: 20px;
+        }
+
+        .price-change.up {
+            color: #10b981;
+        }
+
+        .price-change.down {
+            color: #ef4444;
+        }
+
+        /* TIMER SECTION - ALWAYS VISIBLE */
+        .timer-section {
+            padding: 20px 16px;
+            background: #003d7a;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .timer-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .timer-display {
+            font-size: 64px;
+            font-weight: 700;
+            color: white;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timer-display.warning {
+            color: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* CONTROLS */
+        .controls {
+            padding: 16px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-buy {
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .btn-buy:hover:not(:disabled) {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-sell {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .btn-sell:hover:not(:disabled) {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-start {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #003d7a 0%, #004a94 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            font-size: 16px;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            box-shadow: 0 6px 16px rgba(0, 61, 122, 0.3);
+        }
+
+        /* FOOTER */
+        .footer {
+            display: none;
+        }
+
+        .footer-stat {
+            display: none;
+        }
+
+        .footer-label {
+            display: none;
+        }
+
+        .footer-value {
+            display: none;
+        }
+
+        /* RESULT MODAL */
+        .result-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .result-modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            padding: 32px 24px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .result-title.correct {
+            color: #10b981;
+        }
+
+        .result-title.wrong {
+            color: #ef4444;
+        }
+
+        .result-pnl {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 16px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .result-pnl.profit {
+            color: #10b981;
+        }
+
+        .result-pnl.loss {
+            color: #ef4444;
+        }
+
+        .result-description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .result-button {
+            background: linear-gradient(135deg, #003d7a 0%, #004a94 100%);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: 100%;
+        }
+
+        /* POSITION DISPLAY */
+        .position-display {
+            display: none;
+        }
+
+        .position-label {
+            display: none;
+        }
+
+        .position-value {
+            display: none;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 480px) {
+            .header-title {
+                font-size: 20px;
+            }
+
+            .news-headline {
+                font-size: 16px;
+            }
+
+            .price-display {
+                font-size: 40px;
+            }
+
+            .timer-display {
+                font-size: 48px;
+                min-height: 60px;
+            }
+
+            .header-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .footer {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .stat-value {
+                font-size: 12px;
+            }
+
+            .btn {
+                padding: 12px 16px;
+                font-size: 13px;
+            }
+        }
+
+        /* HIDE SCROLLBAR ON MOBILE */
+        .content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 2px;
+        }
+
+        .content::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-title">Oil Trader</div>
+            <div class="header-subtitle">Trading Game</div>
+            <div class="header-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Portfolio</div>
+                    <div class="stat-value" id="headerPortfolio">$100K</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">P&L</div>
+                    <div class="stat-value" id="headerPnL">+$0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Win Rate</div>
+                    <div class="stat-value" id="headerWinRate">—</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Round</div>
+                    <div class="stat-value" id="headerRound">0/100</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+            <!-- NEWS -->
+            <div class="news-section">
+                <div class="news-label">📰 Market News</div>
+                <div class="news-headline" id="newsHeadline">Ready to trade?</div>
+                <div class="news-description" id="newsDescription">Press START to begin trading crude oil based on real market events.</div>
+                <div class="news-meta">
+                    <span class="meta-badge">
+                        <span>📍</span>
+                        <span id="newsCategory">Global</span>
+                    </span>
+                    <span class="meta-badge">
+                        <span>⏰</span>
+                        <span id="newsTime">Today</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- PRICE -->
+            <div class="price-section">
+                <div class="price-label">WTI Crude Oil Price</div>
+                <div class="price-display" id="priceDisplay">$68.50</div>
+                <div class="price-change" id="priceChange">Waiting for decision...</div>
+            </div>
+
+            <!-- TIMER -->
+            <div class="timer-section">
+                <div class="timer-label">Decision Window</div>
+                <div class="timer-display" id="timerDisplay">20</div>
+                <div class="position-display">
+                    <div class="position-label">Current Position</div>
+                    <div class="position-value" id="positionValue">FLAT</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="controls">
+            <button class="btn btn-buy" id="btnBuy">🟢 Buy</button>
+            <button class="btn btn-sell" id="btnSell">🔴 Sell</button>
+            <button class="btn btn-start" id="btnStart">Start Trading</button>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <div class="footer-stat">
+                <div class="footer-label">Correct Calls</div>
+                <div class="footer-value" id="correctCalls">0</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-label">Largest Win</div>
+                <div class="footer-value" id="largestWin">—</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-label">Avg Win</div>
+                <div class="footer-value" id="avgWin">—</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-label">Current Streak</div>
+                <div class="footer-value" id="streak">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULT MODAL -->
+    <div class="result-modal" id="resultModal">
+        <div class="result-card">
+            <div class="result-title" id="resultTitle">Correct!</div>
+            <div class="result-pnl" id="resultPnL">+$2,500</div>
+            <div class="result-description" id="resultDescription">You made the right call!</div>
+            <button class="result-button" id="btnContinue">Next Round</button>
+        </div>
+    </div>
+
+    <script>
+        // FISHER-YATES SHUFFLE FUNCTION
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // 100 OIL TRADING SCENARIOS
+        const scenarios = [
+            {
+                headline: "OPEC Announces Production Cut",
+                description: "OPEC+ members agree to cut oil production by 2M barrels per day",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 68.50,
+                direction: "UP",
+                priceAfter: 72.30,
+                reason: "Supply reduction supports prices"
+            },
+            {
+                headline: "Saudi Arabia Increases Output",
+                description: "Saudi Aramco ramps up crude production to record levels",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 72.30,
+                direction: "DOWN",
+                priceAfter: 68.00,
+                reason: "Excess supply pressures prices lower"
+            },
+            {
+                headline: "Russia Sanctions - Oil Embargo",
+                description: "Western nations impose oil embargo; 3M barrels/day offline",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 68.00,
+                direction: "UP",
+                priceAfter: 98.50,
+                reason: "Major supply disruption"
+            },
+            {
+                headline: "Iran Nuclear Deal Collapsed",
+                description: "U.S. reimpose sanctions on Iranian oil exports",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 98.50,
+                direction: "UP",
+                priceAfter: 105.20,
+                reason: "Iranian supply threatened"
+            },
+            {
+                headline: "Venezuela Crisis Deepens",
+                description: "Economic collapse accelerates oil production decline",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 105.20,
+                direction: "DOWN",
+                priceAfter: 78.50,
+                reason: "Already priced in; sentiment shifts"
+            },
+            {
+                headline: "Libya Ends Oil Blockade",
+                description: "Libya resumes crude exports after 18-month standoff",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 78.50,
+                direction: "DOWN",
+                priceAfter: 71.30,
+                reason: "Additional supply enters market"
+            },
+            {
+                headline: "Iraq Oil Terminal Damaged",
+                description: "Drone strike hits Basra; 500K barrels/day offline",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 71.30,
+                direction: "UP",
+                priceAfter: 82.15,
+                reason: "Supply disruption spikes prices"
+            },
+            {
+                headline: "U.S. Shale Boom Accelerates",
+                description: "U.S. oil production hits 12M barrels/day; efficiency gains",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 82.15,
+                direction: "DOWN",
+                priceAfter: 75.45,
+                reason: "Domestic supply growth weighs on prices"
+            },
+            {
+                headline: "Arctic Drilling Rights Auctioned",
+                description: "U.S. Interior Dept auctions Arctic drilling leases",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 75.45,
+                direction: "DOWN",
+                priceAfter: 72.20,
+                reason: "Future supply concerns dampen prices"
+            },
+            {
+                headline: "Nigeria Refinery Explosion",
+                description: "Major refinery fire; 200K barrels/day offline temporarily",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 72.20,
+                direction: "UP",
+                priceAfter: 76.80,
+                reason: "African supply disruption"
+            },
+            {
+                headline: "China Lockdown Extended",
+                description: "COVID lockdown extended to major manufacturing hubs",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 76.80,
+                direction: "DOWN",
+                priceAfter: 68.50,
+                reason: "Recession fears crush demand"
+            },
+            {
+                headline: "Global GDP Forecast Raised",
+                description: "IMF raises 2024 growth forecast to 3.5%",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 68.50,
+                direction: "UP",
+                priceAfter: 75.20,
+                reason: "Economic tailwind boosts demand"
+            },
+            {
+                headline: "U.S. Recession Fears Ease",
+                description: "Fed signals pause on rate hikes; soft landing likely",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 75.20,
+                direction: "UP",
+                priceAfter: 82.40,
+                reason: "Demand recovery scenario improves"
+            },
+            {
+                headline: "European Manufacturing Slump",
+                description: "Eurozone PMI falls to 47.5; industrial decline",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 82.40,
+                direction: "DOWN",
+                priceAfter: 73.90,
+                reason: "Weak EU demand outlook"
+            },
+            {
+                headline: "India's Fuel Consumption Hits Record",
+                description: "India surpasses Japan as #2 oil consumer",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 73.90,
+                direction: "UP",
+                priceAfter: 80.30,
+                reason: "Emerging market demand surge"
+            },
+            {
+                headline: "U.S. Summer Driving Season Begins",
+                description: "42M Americans expected to travel by car",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 80.30,
+                direction: "UP",
+                priceAfter: 85.90,
+                reason: "Seasonal demand strength"
+            },
+            {
+                headline: "EV Sales Triple Year-over-Year",
+                description: "Electric vehicle market explodes; fuel demand concerns",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 85.90,
+                direction: "DOWN",
+                priceAfter: 78.50,
+                reason: "Long-term oil demand threatened"
+            },
+            {
+                headline: "OPEC Cuts Production Further",
+                description: "Emergency meeting results in additional 1M barrel/day cut",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 78.50,
+                direction: "UP",
+                priceAfter: 88.20,
+                reason: "Aggressive supply management"
+            },
+            {
+                headline: "Mexico Oil Production Collapse",
+                description: "Mexican output falls to 1.4M barrels/day; 30-year low",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 88.20,
+                direction: "UP",
+                priceAfter: 92.30,
+                reason: "Western Hemisphere supply tightens"
+            },
+            {
+                headline: "Kazakh Pipeline Disrupted",
+                description: "Caspian Pipeline halts shipments; 1M barrels/day offline",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 92.30,
+                direction: "UP",
+                priceAfter: 96.50,
+                reason: "Caspian region supply cuts"
+            },
+            {
+                headline: "U.S. Dollar Strengthens Sharply",
+                description: "Dollar index breaks above 110",
+                category: "Macro",
+                time: "Today",
+                currentPrice: 96.50,
+                direction: "DOWN",
+                priceAfter: 88.20,
+                reason: "Stronger dollar dampens demand"
+            },
+            {
+                headline: "Dollar Weakens on Fed Pause",
+                description: "Fed signals potential rate cuts; dollar falls 3%",
+                category: "Macro",
+                time: "Today",
+                currentPrice: 88.20,
+                direction: "UP",
+                priceAfter: 94.50,
+                reason: "Weaker dollar makes crude cheaper"
+            },
+            {
+                headline: "Inflation Data Hotter Than Expected",
+                description: "U.S. CPI rises 4.2%; Fed tightening concerns return",
+                category: "Macro",
+                time: "Today",
+                currentPrice: 94.50,
+                direction: "DOWN",
+                priceAfter: 82.30,
+                reason: "Tightening concerns pressure growth"
+            },
+            {
+                headline: "Stock Market Crashes 10%",
+                description: "Nasdaq plummets on recession fears",
+                category: "Market",
+                time: "Today",
+                currentPrice: 82.30,
+                direction: "DOWN",
+                priceAfter: 72.80,
+                reason: "Risk-off sentiment dominates"
+            },
+            {
+                headline: "Tech Rally Resumes Strength",
+                description: "Nasdaq surges 8%; investor risk appetite returns",
+                category: "Market",
+                time: "Today",
+                currentPrice: 72.80,
+                direction: "UP",
+                priceAfter: 79.40,
+                reason: "Risk-on sentiment boosts commodities"
+            },
+            {
+                headline: "Fed Raises Rates 50 Basis Points",
+                description: "Surprise rate hike signals inflation fight continues",
+                category: "Policy",
+                time: "Today",
+                currentPrice: 79.40,
+                direction: "DOWN",
+                priceAfter: 71.20,
+                reason: "Tightening cycles hurt commodities"
+            },
+            {
+                headline: "Fed Signals Rate Cuts Coming",
+                description: "Jerome Powell hints at 2024 rate reductions",
+                category: "Policy",
+                time: "Today",
+                currentPrice: 71.20,
+                direction: "UP",
+                priceAfter: 81.50,
+                reason: "Easier policy supports growth"
+            },
+            {
+                headline: "China Stimulus Announced",
+                description: "China announces $100B+ stimulus package",
+                category: "Policy",
+                time: "Today",
+                currentPrice: 81.50,
+                direction: "UP",
+                priceAfter: 88.30,
+                reason: "Chinese growth = oil demand surge"
+            },
+            {
+                headline: "Europe Enters Recession",
+                description: "Eurozone GDP contracts for 2 consecutive quarters",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 88.30,
+                direction: "DOWN",
+                priceAfter: 76.50,
+                reason: "European demand deterioration"
+            },
+            {
+                headline: "Brazil Discovery: 3B Barrel Field",
+                description: "Petrobras announces massive presalt oil discovery",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 76.50,
+                direction: "DOWN",
+                priceAfter: 70.80,
+                reason: "Future supply growth builds"
+            },
+            {
+                headline: "Hurricane Season: Severe Forecast",
+                description: "NOAA predicts above-average hurricane activity",
+                category: "Weather",
+                time: "Today",
+                currentPrice: 70.80,
+                direction: "UP",
+                priceAfter: 77.40,
+                reason: "Hurricane risk premium added"
+            },
+            {
+                headline: "Gulf Refinery Shut Down by Storm",
+                description: "Major hurricane forces shutdown; 800K barrels/day offline",
+                category: "Weather",
+                time: "Today",
+                currentPrice: 77.40,
+                direction: "UP",
+                priceAfter: 84.20,
+                reason: "Refining disruption = demand pressure"
+            },
+            {
+                headline: "Extreme Heat Wave Signals Peak Demand",
+                description: "Record temperatures across U.S.; AC demand peaks",
+                category: "Weather",
+                time: "Today",
+                currentPrice: 84.20,
+                direction: "UP",
+                priceAfter: 89.30,
+                reason: "Peak summer demand season"
+            },
+            {
+                headline: "Mild Winter Forecast Issued",
+                description: "Warmest winter on record forecast; heating demand collapses",
+                category: "Weather",
+                time: "Today",
+                currentPrice: 89.30,
+                direction: "DOWN",
+                priceAfter: 78.90,
+                reason: "Weak winter heating demand"
+            },
+            {
+                headline: "El Niño Pattern Returns",
+                description: "Climate pattern shift could boost winter energy demand",
+                category: "Weather",
+                time: "Today",
+                currentPrice: 78.90,
+                direction: "UP",
+                priceAfter: 84.50,
+                reason: "Cold winter demand expectations"
+            },
+            {
+                headline: "U.S. Crude Inventories Fall 5M Barrels",
+                description: "EIA reports unexpected draw; strong demand signal",
+                category: "Data",
+                time: "Today",
+                currentPrice: 84.50,
+                direction: "UP",
+                priceAfter: 89.70,
+                reason: "Inventory draw bullish"
+            },
+            {
+                headline: "Crude Stocks Pile Up 8M Barrels",
+                description: "EIA reports surprise inventory build",
+                category: "Data",
+                time: "Today",
+                currentPrice: 89.70,
+                direction: "DOWN",
+                priceAfter: 81.40,
+                reason: "Build signals weak demand"
+            },
+            {
+                headline: "Gasoline Demand at Seasonal High",
+                description: "Weekly gasoline demand hits 10-year high",
+                category: "Data",
+                time: "Today",
+                currentPrice: 81.40,
+                direction: "UP",
+                priceAfter: 87.20,
+                reason: "Strong gas demand lifts crude"
+            },
+            {
+                headline: "Refinery Utilization Drops Below 80%",
+                description: "U.S. refinery utilization falls to 79%",
+                category: "Data",
+                time: "Today",
+                currentPrice: 87.20,
+                direction: "DOWN",
+                priceAfter: 78.50,
+                reason: "Lower utilization = less crude demand"
+            },
+            {
+                headline: "Distillate Inventories Hit 5-Year Low",
+                description: "Heating oil and diesel stocks at lowest levels",
+                category: "Data",
+                time: "Today",
+                currentPrice: 78.50,
+                direction: "UP",
+                priceAfter: 85.30,
+                reason: "Tight middle distillate supply"
+            },
+            {
+                headline: "ExxonMobil Acquires Pioneer Natural",
+                description: "ExxonMobil announces $60B acquisition",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 85.30,
+                direction: "UP",
+                priceAfter: 88.90,
+                reason: "Consolidation signals bullish outlook"
+            },
+            {
+                headline: "Shell Exits Russian Operations",
+                description: "Shell divests Russian joint ventures",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 88.90,
+                direction: "UP",
+                priceAfter: 94.50,
+                reason: "Western pullback from Russia"
+            },
+            {
+                headline: "BP Cuts Renewable Investment",
+                description: "BP reverses energy transition strategy",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 94.50,
+                direction: "DOWN",
+                priceAfter: 87.30,
+                reason: "Signals lower long-term demand"
+            },
+            {
+                headline: "Saudi Aramco Record Profit",
+                description: "Saudi Aramco reports $160B profit",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 87.30,
+                direction: "UP",
+                priceAfter: 93.40,
+                reason: "Record profits support supply discipline"
+            },
+            {
+                headline: "Chevron Beats Earnings",
+                description: "Chevron reports earnings surprise; FCF accelerates",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 93.40,
+                direction: "UP",
+                priceAfter: 96.20,
+                reason: "Strong earnings drive sector confidence"
+            },
+            {
+                headline: "Yemen Houthi Attacks on Shipping",
+                description: "Houthis launch attacks on Red Sea tankers",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 96.20,
+                direction: "UP",
+                priceAfter: 102.80,
+                reason: "Shipping risk premium added"
+            },
+            {
+                headline: "Israel-Hamas Ceasefire Announced",
+                description: "Middle East tension eases on ceasefire agreement",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 102.80,
+                direction: "DOWN",
+                priceAfter: 89.50,
+                reason: "Risk reduction = lower prices"
+            },
+            {
+                headline: "Taiwan Strait Tensions Escalate",
+                description: "China military exercises near Taiwan",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 89.50,
+                direction: "UP",
+                priceAfter: 95.40,
+                reason: "Asian supply route risk"
+            },
+            {
+                headline: "North Korea Nuclear Test",
+                description: "North Korea conducts nuclear test",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 95.40,
+                direction: "UP",
+                priceAfter: 99.80,
+                reason: "Geopolitical risk premium soars"
+            },
+            {
+                headline: "U.S.-China Trade War Eases",
+                description: "Trade deal reached; tariffs rolled back",
+                category: "Policy",
+                time: "Today",
+                currentPrice: 99.80,
+                direction: "DOWN",
+                priceAfter: 88.40,
+                reason: "Less friction boosts growth"
+            },
+            {
+                headline: "EU Carbon Tax Takes Effect",
+                description: "EU's carbon border adjustment mechanism begins",
+                category: "Regulation",
+                time: "Today",
+                currentPrice: 88.40,
+                direction: "DOWN",
+                priceAfter: 81.70,
+                reason: "Carbon costs reduce competitiveness"
+            },
+            {
+                headline: "COP28: Net-Zero Commitment",
+                description: "197 nations sign net-zero oil phase-out by 2050",
+                category: "Regulation",
+                time: "Today",
+                currentPrice: 81.70,
+                direction: "DOWN",
+                priceAfter: 74.50,
+                reason: "Long-term demand destruction"
+            },
+            {
+                headline: "U.S. Passes Climate Tax Credits",
+                description: "Biden signs renewable energy tax credits",
+                category: "Policy",
+                time: "Today",
+                currentPrice: 74.50,
+                direction: "DOWN",
+                priceAfter: 68.90,
+                reason: "EV push threatens oil demand"
+            },
+            {
+                headline: "Norwegian Oil Windfall Tax",
+                description: "Norway raises oil windfall tax to 78%",
+                category: "Regulation",
+                time: "Today",
+                currentPrice: 68.90,
+                direction: "UP",
+                priceAfter: 74.30,
+                reason: "Higher taxes reduce future supply"
+            },
+            {
+                headline: "Biden Pauses Lease Sales",
+                description: "Biden pauses new federal oil/gas leases",
+                category: "Policy",
+                time: "Today",
+                currentPrice: 74.30,
+                direction: "UP",
+                priceAfter: 81.20,
+                reason: "U.S. supply growth slowed"
+            },
+            {
+                headline: "Suez Canal Blockage Ends",
+                description: "Ever Given finally cleared from Suez",
+                category: "Logistics",
+                time: "Today",
+                currentPrice: 81.20,
+                direction: "DOWN",
+                priceAfter: 75.80,
+                reason: "Logistics normalization eases prices"
+            },
+            {
+                headline: "Panama Canal Water Levels Drop",
+                description: "Drought reduces Panama Canal capacity by 20%",
+                category: "Logistics",
+                time: "Today",
+                currentPrice: 75.80,
+                direction: "UP",
+                priceAfter: 82.40,
+                reason: "Logistics bottleneck adds premium"
+            },
+            {
+                headline: "Shipping Rates Hit 10-Year High",
+                description: "Baltic Dirty Tanker Index soars to $95K/day",
+                category: "Logistics",
+                time: "Today",
+                currentPrice: 82.40,
+                direction: "UP",
+                priceAfter: 88.90,
+                reason: "Tight tanker supply increases costs"
+            },
+            {
+                headline: "LNG Prices Collapse 60%",
+                description: "LNG prices crash on mild winter",
+                category: "Logistics",
+                time: "Today",
+                currentPrice: 88.90,
+                direction: "DOWN",
+                priceAfter: 79.30,
+                reason: "Weak energy demand signals"
+            },
+            {
+                headline: "Arctic Sea Route Opens Earlier",
+                description: "Climate change opens Arctic shipping route earlier",
+                category: "Logistics",
+                time: "Today",
+                currentPrice: 79.30,
+                direction: "DOWN",
+                priceAfter: 72.60,
+                reason: "New routes reduce scarcity premium"
+            },
+            {
+                headline: "Oil Shorts Hit 2-Year High",
+                description: "Hedge funds build massive short positions",
+                category: "Sentiment",
+                time: "Today",
+                currentPrice: 72.60,
+                direction: "UP",
+                priceAfter: 79.40,
+                reason: "Crowded short = potential squeeze"
+            },
+            {
+                headline: "Crude Futures Gap Up at Open",
+                description: "Overnight Asian buying sends crude up $4",
+                category: "Technical",
+                time: "Today",
+                currentPrice: 79.40,
+                direction: "UP",
+                priceAfter: 85.10,
+                reason: "Momentum continuation on gap"
+            },
+            {
+                headline: "OPEC Signals Surprise Cut",
+                description: "OPEC president hints at additional cuts",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 85.10,
+                direction: "UP",
+                priceAfter: 92.30,
+                reason: "Forward guidance supports prices"
+            },
+            {
+                headline: "Goldman Raises Oil Target",
+                description: "Goldman Sachs raises WTI target to $110",
+                category: "Sentiment",
+                time: "Today",
+                currentPrice: 92.30,
+                direction: "UP",
+                priceAfter: 98.50,
+                reason: "Bullish analyst call influences flows"
+            },
+            {
+                headline: "Morgan Stanley Cuts Forecast",
+                description: "Morgan Stanley slashes oil price forecast to $65",
+                category: "Sentiment",
+                time: "Today",
+                currentPrice: 98.50,
+                direction: "DOWN",
+                priceAfter: 85.20,
+                reason: "Bearish call triggers selling"
+            },
+            // REMAINING 50 SCENARIOS (60-100)
+            {
+                headline: "OPEC Compliance Falls Short",
+                description: "OPEC members fail to meet production targets",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 75.60,
+                direction: "DOWN",
+                priceAfter: 71.20,
+                reason: "Credibility issues weigh on prices"
+            },
+            {
+                headline: "Kuwait Oil Terminal Reopens",
+                description: "Kuwait resumes exports after maintenance",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 71.20,
+                direction: "DOWN",
+                priceAfter: 68.50,
+                reason: "Additional supply returns"
+            },
+            {
+                headline: "U.S. Unemployment Drops to 3.5%",
+                description: "Strong jobs market signals economic health",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 68.50,
+                direction: "UP",
+                priceAfter: 76.80,
+                reason: "Strong economy boosts oil demand"
+            },
+            {
+                headline: "Japan Recession Declared Official",
+                description: "Japan GDP contracts for 2 quarters",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 76.80,
+                direction: "DOWN",
+                priceAfter: 70.40,
+                reason: "Asian demand weakness spreads"
+            },
+            {
+                headline: "UAE Oil Reserves Expand",
+                description: "UAE announces largest oil reserves in Middle East",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 70.40,
+                direction: "DOWN",
+                priceAfter: 65.90,
+                reason: "Massive reserve discovery bearish"
+            },
+            {
+                headline: "Brent Crude Premium Widens",
+                description: "Brent-WTI spread blows out on Europe demand",
+                category: "Market",
+                time: "Today",
+                currentPrice: 65.90,
+                direction: "UP",
+                priceAfter: 72.50,
+                reason: "European demand strength"
+            },
+            {
+                headline: "Canadian Oil Sands Disruption",
+                description: "Wildfire forces Canadian production shutdown",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 72.50,
+                direction: "UP",
+                priceAfter: 79.30,
+                reason: "North American supply squeezed"
+            },
+            {
+                headline: "India Reduces Oil Imports",
+                description: "India diversifies away from crude dependence",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 79.30,
+                direction: "DOWN",
+                priceAfter: 73.80,
+                reason: "Emerging market demand weakens"
+            },
+            {
+                headline: "South Korea Economic Growth Accelerates",
+                description: "SK GDP beats forecast; industrial output surges",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 73.80,
+                direction: "UP",
+                priceAfter: 81.20,
+                reason: "Asian demand surprise to upside"
+            },
+            {
+                headline: "California Gasoline Crisis Averted",
+                description: "New refinery capacity comes online in CA",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 81.20,
+                direction: "DOWN",
+                priceAfter: 76.50,
+                reason: "Refining supply eases"
+            },
+            {
+                headline: "Norway Wind Farm Explosion",
+                description: "Renewable energy disruption in Norway",
+                category: "Regulation",
+                time: "Today",
+                currentPrice: 76.50,
+                direction: "UP",
+                priceAfter: 82.30,
+                reason: "Alternative energy setback"
+            },
+            {
+                headline: "Bitcoin Crashes 40%",
+                description: "Crypto market collapse signals risk-off",
+                category: "Market",
+                time: "Today",
+                currentPrice: 82.30,
+                direction: "DOWN",
+                priceAfter: 74.10,
+                reason: "Broader risk-off sentiment"
+            },
+            {
+                headline: "Tech Sector Rally Resumes",
+                description: "AI stocks lead market higher",
+                category: "Market",
+                time: "Today",
+                currentPrice: 74.10,
+                direction: "UP",
+                priceAfter: 81.60,
+                reason: "Risk appetite returns"
+            },
+            {
+                headline: "Saudi Aramco Dividend Raised",
+                description: "Saudi Aramco increases shareholder returns",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 81.60,
+                direction: "UP",
+                priceAfter: 87.40,
+                reason: "Confidence in oil markets"
+            },
+            {
+                headline: "Russia-Ukraine Peace Talks Resume",
+                description: "Negotiations could ease geopolitical tensions",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 87.40,
+                direction: "DOWN",
+                priceAfter: 78.90,
+                reason: "Risk premium fades on peace hopes"
+            },
+            {
+                headline: "OPEC+ Emergency Summit Called",
+                description: "Unexpected emergency meeting signals concern",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 78.90,
+                direction: "UP",
+                priceAfter: 85.70,
+                reason: "Market concerns trigger response"
+            },
+            {
+                headline: "Oil Refinery Merger Approved",
+                description: "Major oil refinery consolidation approved",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 85.70,
+                direction: "UP",
+                priceAfter: 89.50,
+                reason: "Supply-side consolidation positive"
+            },
+            {
+                headline: "Tropical Storm Misses Gulf",
+                description: "Hurricane weakens; no oil infrastructure damage",
+                category: "Weather",
+                time: "Today",
+                currentPrice: 89.50,
+                direction: "DOWN",
+                priceAfter: 82.30,
+                reason: "Weather risk premium releases"
+            },
+            {
+                headline: "U.S. Energy Secretary Visit",
+                description: "Energy Secretary visits Saudi Arabia on climate talks",
+                category: "Policy",
+                time: "Today",
+                currentPrice: 82.30,
+                direction: "DOWN",
+                priceAfter: 76.50,
+                reason: "Policy signals energy transition"
+            },
+            {
+                headline: "OPEC Member Leaves Organization",
+                description: "Ecuador withdraws from OPEC over compliance",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 76.50,
+                direction: "DOWN",
+                priceAfter: 70.80,
+                reason: "OPEC unity concerns"
+            },
+            {
+                headline: "Wall Street Upgrades Energy Sector",
+                description: "Major banks raise oil sector price targets",
+                category: "Sentiment",
+                time: "Today",
+                currentPrice: 70.80,
+                direction: "UP",
+                priceAfter: 78.40,
+                reason: "Bullish Wall Street positioning"
+            },
+            {
+                headline: "U.S. Natural Gas Glut Builds",
+                description: "Natural gas prices crash; production incentives ease",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 78.40,
+                direction: "DOWN",
+                priceAfter: 72.10,
+                reason: "Energy oversupply concerns"
+            },
+            {
+                headline: "Australia Coal Strike Ends",
+                description: "Australian coal miners return to work",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 72.10,
+                direction: "DOWN",
+                priceAfter: 68.50,
+                reason: "Coal supply relief eases energy premium"
+            },
+            {
+                headline: "Venezuelan Oil Seized by US",
+                description: "U.S. seizes Venezuelan oil tanker shipment",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 68.50,
+                direction: "UP",
+                priceAfter: 75.80,
+                reason: "Geopolitical escalation spikes prices"
+            },
+            {
+                headline: "Kazakhstan Increases Exports",
+                description: "Kazakhstan ramps up Caspian oil exports",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 75.80,
+                direction: "DOWN",
+                priceAfter: 70.20,
+                reason: "Central Asian supply surge"
+            },
+            {
+                headline: "Indonesia Rejoins OPEC",
+                description: "Indonesia rejoins OPEC after 16-year absence",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 70.20,
+                direction: "UP",
+                priceAfter: 76.90,
+                reason: "OPEC solidarity strengthens"
+            },
+            {
+                headline: "Egypt Suez Canal Revenue Records",
+                description: "Suez Canal toll increases boost Egypt revenues",
+                category: "Logistics",
+                time: "Today",
+                currentPrice: 76.90,
+                direction: "UP",
+                priceAfter: 82.50,
+                reason: "Higher transit costs boost prices"
+            },
+            {
+                headline: "U.S. SPR Continues Selling",
+                description: "U.S. continues Strategic Petroleum Release",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 82.50,
+                direction: "DOWN",
+                priceAfter: 76.30,
+                reason: "Emergency supply releases weigh"
+            },
+            {
+                headline: "Angola Oil Output Collapse",
+                description: "Angola oil production falls to 25-year lows",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 76.30,
+                direction: "UP",
+                priceAfter: 83.60,
+                reason: "African supply crisis"
+            },
+            {
+                headline: "Singapore Refinery Maintenance",
+                description: "Major Singapore refinery down for maintenance",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 83.60,
+                direction: "UP",
+                priceAfter: 88.90,
+                reason: "Asian refining capacity reduction"
+            },
+            {
+                headline: "Global Trade Talks Collapse",
+                description: "International trade negotiations stall",
+                category: "Policy",
+                time: "Today",
+                currentPrice: 88.90,
+                direction: "DOWN",
+                priceAfter: 80.50,
+                reason: "Trade war fears dampen demand"
+            },
+            {
+                headline: "Renewable Energy Investment Doubles",
+                description: "Global renewable investment hits record",
+                category: "Regulation",
+                time: "Today",
+                currentPrice: 80.50,
+                direction: "DOWN",
+                priceAfter: 74.20,
+                reason: "Energy transition accelerates"
+            },
+            {
+                headline: "Hurricane Category 5 Forms",
+                description: "Major hurricane forms in Gulf of Mexico",
+                category: "Weather",
+                time: "Today",
+                currentPrice: 74.20,
+                direction: "UP",
+                priceAfter: 81.80,
+                reason: "Extreme weather risk premium"
+            },
+            {
+                headline: "China Demand Pickup Signals",
+                description: "Chinese crude imports surge to 2-year high",
+                category: "Demand",
+                time: "Today",
+                currentPrice: 81.80,
+                direction: "UP",
+                priceAfter: 88.60,
+                reason: "Major demand signal from China"
+            },
+            {
+                headline: "ExxonMobil Profit Warning",
+                description: "ExxonMobil slashes earnings guidance",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 88.60,
+                direction: "DOWN",
+                priceAfter: 81.40,
+                reason: "Profit concerns dampen sector"
+            },
+            {
+                headline: "European Winter Begins Early",
+                description: "Unseasonably cold weather hits Europe early",
+                category: "Weather",
+                time: "Today",
+                currentPrice: 81.40,
+                direction: "UP",
+                priceAfter: 87.90,
+                reason: "Early heating demand surge"
+            },
+            {
+                headline: "OPEC Production Compliance 125%",
+                description: "OPEC members exceed production cuts",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 87.90,
+                direction: "UP",
+                priceAfter: 93.20,
+                reason: "Supply discipline exceeds expectations"
+            },
+            {
+                headline: "U.S. Refiner Maintenance Schedule",
+                description: "Multiple U.S. refineries enter scheduled maintenance",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 93.20,
+                direction: "DOWN",
+                priceAfter: 86.50,
+                reason: "Seasonal refining downtime"
+            },
+            {
+                headline: "Middle East Peace Accord Signed",
+                description: "Historic Middle East peace agreement reached",
+                category: "Geopolitics",
+                time: "Today",
+                currentPrice: 86.50,
+                direction: "DOWN",
+                priceAfter: 78.20,
+                reason: "Geopolitical risk premium collapses"
+            },
+            {
+                headline: "Oil Tanker Fleet Expansion",
+                description: "Oil tanker capacity increases 15% this year",
+                category: "Logistics",
+                time: "Today",
+                currentPrice: 78.20,
+                direction: "DOWN",
+                priceAfter: 71.60,
+                reason: "Shipping capacity eases bottleneck"
+            },
+            {
+                headline: "Permian Basin Oil Discovery",
+                description: "Massive oil discovery in Permian Basin",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 71.60,
+                direction: "DOWN",
+                priceAfter: 65.80,
+                reason: "U.S. resource abundance grows"
+            },
+            {
+                headline: "Baker Hughes Rig Count Jumps",
+                description: "U.S. oil rig count increases 15% in one week",
+                category: "Supply",
+                time: "Today",
+                currentPrice: 65.80,
+                direction: "DOWN",
+                priceAfter: 60.50,
+                reason: "Oil drilling activity surges"
+            },
+            {
+                headline: "IPO Boom Returns to Energy",
+                description: "Energy sector IPOs surge; new entrants",
+                category: "Corporate",
+                time: "Today",
+                currentPrice: 60.50,
+                direction: "UP",
+                priceAfter: 68.30,
+                reason: "Market optimism returns"
+            },
+            {
+                headline: "OPEC+ Meeting Ends Without Deal",
+                description: "OPEC+ fails to reach production agreement",
+                category: "OPEC",
+                time: "Today",
+                currentPrice: 68.30,
+                direction: "DOWN",
+                priceAfter: 61.90,
+                reason: "Unity breakdown bearish signal"
+            }
+        ];
+
+        // GAME STATE
+        let gameState = {
+            currentRound: 0,
+            portfolio: 100000,
+            position: null,
+            entryPrice: 0,
+            winCount: 0,
+            totalCount: 0,
+            maxWin: 0,
+            avgWin: 0,
+            streak: 0,
+            decisions: [],
+            gameActive: false
+        };
+
+        let timerInterval;
+        let currentScenario;
+        let shuffledScenarios = shuffleArray(scenarios);
+
+        function formatCurrency(value) {
+            if (value >= 1000) {
+                return '$' + (value / 1000).toFixed(0) + 'K';
+            }
+            return '$' + value.toFixed(0);
+        }
+
+        function formatPercent(value) {
+            return (value >= 0 ? '+' : '') + value.toFixed(1) + '%';
+        }
+
+        function updateHeader() {
+            const pnl = gameState.portfolio - 100000;
+            const winRate = gameState.totalCount > 0 ? (gameState.winCount / gameState.totalCount * 100) : 0;
+            
+            document.getElementById('headerPortfolio').textContent = formatCurrency(gameState.portfolio);
+            document.getElementById('headerPnL').textContent = (pnl >= 0 ? '+' : '') + formatCurrency(pnl);
+            document.getElementById('headerPnL').className = pnl >= 0 ? 'stat-value' : 'stat-value';
+            document.getElementById('headerWinRate').textContent = gameState.totalCount > 0 ? winRate.toFixed(0) + '%' : '—';
+            document.getElementById('headerRound').textContent = `${gameState.currentRound}/100`;
+        }
+
+        function updateFooter() {
+            document.getElementById('correctCalls').textContent = gameState.winCount;
+            document.getElementById('avgWin').textContent = gameState.totalCount > 0 ? formatPercent(gameState.avgWin) : '—';
+            document.getElementById('largestWin').textContent = gameState.maxWin > 0 ? formatPercent(gameState.maxWin) : '—';
+            document.getElementById('streak').textContent = gameState.streak;
+        }
+
+        function startRound() {
+            gameState.currentRound++;
+
+            if (gameState.currentRound > 100) {
+                endGame();
+                return;
+            }
+
+            currentScenario = shuffledScenarios[gameState.currentRound - 1];
+            gameState.gameActive = true;
+
+            // Update news
+            document.getElementById('newsHeadline').textContent = currentScenario.headline;
+            document.getElementById('newsDescription').textContent = currentScenario.description;
+            document.getElementById('newsCategory').textContent = currentScenario.category;
+            document.getElementById('newsTime').textContent = currentScenario.time;
+
+            // Update price display
+            document.getElementById('priceDisplay').textContent = '$' + currentScenario.currentPrice.toFixed(2);
+            document.getElementById('priceChange').textContent = 'Waiting for your decision...';
+            document.getElementById('priceChange').className = '';
+
+            // Update position
+            document.getElementById('positionValue').textContent = gameState.position ? gameState.position.toUpperCase() : 'FLAT';
+
+            // Enable buttons
+            document.getElementById('btnBuy').disabled = false;
+            document.getElementById('btnSell').disabled = false;
+            document.getElementById('btnBuy').textContent = '🟢 Buy';
+            document.getElementById('btnSell').textContent = '🔴 Sell';
+
+            // Start timer
+            startTimer();
+            updateHeader();
+        }
+
+        function startTimer() {
+            let timeRemaining = 10;
+
+            document.getElementById('timerDisplay').textContent = timeRemaining;
+            document.getElementById('timerDisplay').classList.remove('warning');
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                document.getElementById('timerDisplay').textContent = timeRemaining;
+
+                if (timeRemaining <= 3) {
+                    document.getElementById('timerDisplay').classList.add('warning');
+                }
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    autoResolve();
+                }
+            }, 1000);
+        }
+
+        function makeDecision(decision) {
+            clearInterval(timerInterval);
+            gameState.gameActive = false;
+
+            const currentPrice = currentScenario.currentPrice;
+            const futurePrice = currentScenario.priceAfter;
+            const direction = currentScenario.direction;
+
+            let isCorrect = false;
+
+            if (decision === 'BUY') {
+                isCorrect = (direction === 'UP');
+                gameState.position = 'LONG';
+                document.getElementById('btnBuy').textContent = '✓ Buy';
+            } else {
+                isCorrect = (direction === 'DOWN');
+                gameState.position = 'SHORT';
+                document.getElementById('btnSell').textContent = '✓ Sell';
+            }
+
+            document.getElementById('btnBuy').disabled = true;
+            document.getElementById('btnSell').disabled = true;
+
+            setTimeout(() => {
+                revealPrice(currentPrice, futurePrice, isCorrect);
+            }, 600);
+        }
+
+        function autoResolve() {
+            document.getElementById('btnBuy').disabled = true;
+            document.getElementById('btnSell').disabled = true;
+            document.getElementById('btnBuy').textContent = '⏰ Missed';
+            document.getElementById('btnSell').textContent = '⏰ Missed';
+
+            setTimeout(() => {
+                showResult(false, 0, 'Time expired. No position taken.');
+            }, 1000);
+        }
+
+        function revealPrice(currentPrice, futurePrice, isCorrect) {
+            const changePercent = ((futurePrice - currentPrice) / currentPrice) * 100;
+
+            document.getElementById('priceDisplay').textContent = '$' + futurePrice.toFixed(2);
+            document.getElementById('priceChange').textContent = (changePercent >= 0 ? '+' : '') + changePercent.toFixed(2) + '%';
+            document.getElementById('priceChange').className = changePercent >= 0 ? 'price-change up' : 'price-change down';
+
+            setTimeout(() => {
+                if (isCorrect) {
+                    const tradeSize = gameState.portfolio * 0.1;
+                    const pnl = tradeSize * (changePercent / 100);
+                    gameState.portfolio += pnl;
+                    gameState.winCount++;
+                    gameState.streak++;
+
+                    if (Math.abs(changePercent) > Math.abs(gameState.maxWin)) {
+                        gameState.maxWin = changePercent;
+                    }
+
+                    gameState.avgWin = ((gameState.avgWin * (gameState.totalCount - 1)) + changePercent) / gameState.totalCount;
+
+                    showResult(true, pnl, currentScenario.reason);
+                } else {
+                    const tradeSize = gameState.portfolio * 0.1;
+                    const pnl = -tradeSize * (changePercent / 100);
+                    gameState.portfolio += pnl;
+                    gameState.streak = 0;
+
+                    showResult(false, pnl, currentScenario.reason);
+                }
+
+                gameState.totalCount++;
+            }, 800);
+        }
+
+        function showResult(correct, pnl, description) {
+            const modal = document.getElementById('resultModal');
+            const title = document.getElementById('resultTitle');
+            const pnlDisplay = document.getElementById('resultPnL');
+            const desc = document.getElementById('resultDescription');
+
+            if (correct) {
+                title.textContent = '✓ Correct!';
+                title.className = 'result-title correct';
+                pnlDisplay.className = 'result-pnl profit';
+            } else {
+                title.textContent = '✗ Wrong';
+                title.className = 'result-title wrong';
+                pnlDisplay.className = 'result-pnl loss';
+            }
+
+            pnlDisplay.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(0);
+            desc.textContent = description;
+
+            modal.classList.add('active');
+            updateHeader();
+            updateFooter();
+        }
+
+        function nextRound() {
+            document.getElementById('resultModal').classList.remove('active');
+            startRound();
+        }
+
+        function endGame() {
+            const totalPnL = gameState.portfolio - 100000;
+            const winRate = ((gameState.winCount / 100) * 100).toFixed(1);
+            alert(`GAME COMPLETE!\n\nFinal Portfolio: ${formatCurrency(gameState.portfolio)}\nTotal P&L: ${(totalPnL >= 0 ? '+' : '')}${formatCurrency(totalPnL)}\nWin Rate: ${winRate}%\n\nGreat trading!`);
+            location.reload();
+        }
+
+        // EVENT LISTENERS
+        document.getElementById('btnBuy').addEventListener('click', () => makeDecision('BUY'));
+        document.getElementById('btnSell').addEventListener('click', () => makeDecision('SELL'));
+        document.getElementById('btnContinue').addEventListener('click', nextRound);
+        document.getElementById('btnStart').addEventListener('click', () => {
+            document.getElementById('btnStart').textContent = 'Loading...';
+            document.getElementById('btnStart').disabled = true;
+            setTimeout(() => startRound(), 300);
+        });
+
+        updateHeader();
+        updateFooter();
+    </script>
+</body>
+</html>
