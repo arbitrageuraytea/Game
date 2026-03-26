@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>DINO-MAN 🦖</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Sans:wght@400;600&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#f5f0e8;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; font-family:'DM Sans',sans-serif; overflow:hidden;
+    touch-action:none;
+  }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f0e8'/%3E%3Ccircle cx='1' cy='1' r='0.5' fill='%23e8e2d6' opacity='0.5'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:0;
+  }
+  #game-wrapper {
+    position:relative; z-index:1;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  #title {
+    font-family:'Press Start 2P',monospace; font-size:20px;
+    color:#2d2d2d; letter-spacing:2px; text-shadow:3px 3px 0 #c8b89a;
+  }
+  #hud {
+    display:flex; width:100%; justify-content:space-between; align-items:center; padding:0 4px;
+  }
+  .hud-box {
+    background:#fff8ef; border:2px solid #d4c4a8; border-radius:8px;
+    padding:5px 12px; font-family:'Press Start 2P',monospace; font-size:9px; color:#2d2d2d;
+  }
+  .hud-label { color:#8a7a66; font-size:7px; margin-bottom:3px; }
+  #canvas {
+    border:3px solid #d4c4a8; border-radius:12px; background:#fff8ef; display:block;
+    box-shadow:0 8px 32px rgba(0,0,0,.1), 0 2px 8px rgba(0,0,0,.06);
+    cursor:crosshair;
+  }
+  #message-overlay {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(245,240,232,.97); border:3px solid #d4c4a8; border-radius:16px;
+    padding:24px 32px; text-align:center; display:none;
+    box-shadow:0 8px 32px rgba(0,0,0,.15); min-width:210px; z-index:10;
+  }
+  #message-overlay.visible { display:block; }
+  #msg-title { font-family:'Press Start 2P',monospace; font-size:13px; color:#2d2d2d; margin-bottom:10px; }
+  #msg-sub   { font-family:'Press Start 2P',monospace; font-size:7px; color:#8a7a66; line-height:1.9; margin-bottom:16px; white-space:pre-line; }
+  #msg-btn {
+    font-family:'Press Start 2P',monospace; font-size:9px;
+    background:#2d2d2d; color:#f5f0e8; border:none; border-radius:8px;
+    padding:10px 20px; cursor:pointer; transition:transform .1s, background .1s;
+  }
+  #msg-btn:hover { background:#4a9e6b; transform:scale(1.05); }
+  #controls-hint {
+    font-family:'Press Start 2P',monospace; font-size:7px;
+    color:#b0a090; text-align:center; line-height:2;
+  }
+  @media (max-width:520px) {
+    #title { font-size:14px; }
+    #controls-hint { font-size:6px; }
+  }
+</style>
+</head>
+<body>
+<div id="game-wrapper">
+  <div id="title">DINO-MAN 🦖</div>
+  <div id="hud">
+    <div class="hud-box"><div class="hud-label">SCORE</div><div id="score-display">0</div></div>
+    <div class="hud-box"><div class="hud-label">LIVES</div><div id="lives-display">🦖🦖🦖</div></div>
+    <div class="hud-box"><div class="hud-label">LEVEL</div><div id="level-display">1</div></div>
+  </div>
+  <div style="position:relative;">
+    <canvas id="canvas"></canvas>
+    <div id="message-overlay">
+      <div id="msg-title">DINO-MAN</div>
+      <div id="msg-sub"></div>
+      <button id="msg-btn">PLAY!</button>
+    </div>
+  </div>
+  <div id="controls-hint">ARROWS / WASD · TAP ANYWHERE TO PATHFIND</div>
+</div>
+
+<script>
+// ─── CANVAS SETUP ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+
+const vw   = Math.min(window.innerWidth, 520);
+const CELL = Math.max(18, Math.floor((vw - 16) / 15));  // 15-col grid, min 18px
+const COLS = 15, ROWS = 15;
+canvas.width  = COLS * CELL;
+canvas.height = ROWS * CELL;
+
+// ─── POLYFILL: roundRect ──────────────────────────────────────────────────────
+// ctx.roundRect is not available in Safari < 15.4 or older Android WebView.
+// We replace every call with our own helper that uses arc() instead.
+function roundRect(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y,     x + w, y + r,     r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x,     y + h, x,       y + h - r, r);
+  ctx.lineTo(x,     y + r);
+  ctx.arcTo(x,     y,     x + r,   y,         r);
+  ctx.closePath();
+}
+
+// ─── COLOURS ──────────────────────────────────────────────────────────────────
+const C = {
+  bg:         '#fff8ef',
+  wall:       '#3d3530',
+  wallAccent: '#5a4f45',
+  dot:        '#c8a87a',
+  power:      '#e8943a',
+  ghost:      ['#e85c5c', '#e8a05c', '#5c9ae8', '#d45ce8'],
+  ghostFright:'#5c9ae8',
+  dinoGreen:  '#4a9e6b',
+  dinoDark:   '#2d7a4f',
+  dinoLight:  '#7acc99',
+  dinoBelly:  '#d4f0e0',
+};
+
+// ─── MAP ──────────────────────────────────────────────────────────────────────
+// 0=open, 1=wall, 2=dot, 3=power pellet, 4=ghost spawn (passable, no dot)
+const BASE_MAP = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,2,2,2,2,1,2,1,2,2,2,2,3,1],
+  [1,2,1,1,2,1,1,2,1,1,2,1,1,2,1],
+  [1,2,1,2,2,2,2,2,2,2,2,2,1,2,1],
+  [1,2,1,2,1,0,0,0,0,0,1,2,1,2,1],
+  [1,2,2,2,1,4,4,4,4,4,1,2,2,2,1],
+  [1,1,1,2,1,4,4,4,4,4,1,2,1,1,1],
+  [0,0,2,2,1,4,4,4,4,4,1,2,2,0,0],
+  [1,1,1,2,1,4,4,4,4,4,1,2,1,1,1],
+  [1,2,2,2,1,0,0,0,0,0,1,2,2,2,1],
+  [1,2,1,2,2,2,2,2,2,2,2,2,1,2,1],
+  [1,2,1,1,2,1,1,2,1,1,2,1,1,2,1],
+  [1,2,2,2,2,1,1,2,1,1,2,2,2,2,1],
+  [1,3,1,2,2,2,2,2,2,2,2,2,1,3,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let map, dots, score, lives, level, gameState;
+let player, ghosts, frightenedTimer, particles, tapPath;
+
+// ─── BFS PATHFINDING ──────────────────────────────────────────────────────────
+function bfsPath(sr, sc, tr, tc) {
+  // Clamp inputs defensively
+  sr = Math.max(0, Math.min(ROWS-1, sr));
+  sc = Math.max(0, Math.min(COLS-1, sc));
+  tr = Math.max(0, Math.min(ROWS-1, tr));
+  tc = Math.max(0, Math.min(COLS-1, tc));
+  if (sr === tr && sc === tc) return [];
+
+  const visited = Array.from({length: ROWS}, () => new Array(COLS).fill(false));
+  const parent  = Array.from({length: ROWS}, () => new Array(COLS).fill(null));
+  const q = [[sr, sc]];
+  visited[sr][sc] = true;
+
+  while (q.length) {
+    const [r, c] = q.shift();
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+      if (visited[nr][nc] || map[nr][nc] === 1) continue;
+      visited[nr][nc] = true;
+      parent[nr][nc]  = [r, c];
+      if (nr === tr && nc === tc) {
+        const path = [];
+        let cur = [nr, nc];
+        while (cur[0] !== sr || cur[1] !== sc) {
+          path.unshift(cur);
+          cur = parent[cur[0]][cur[1]];
+        }
+        return path;
+      }
+      q.push([nr, nc]);
+    }
+  }
+  return [];
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function initGame() {
+  score = 0; lives = 3; level = 1;
+  particles = []; frightenedTimer = 0; tapPath = [];
+  updateHUD();
+  initLevel();
+}
+
+function initLevel() {
+  map  = BASE_MAP.map(r => [...r]);
+  dots = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (map[r][c] === 2 || map[r][c] === 3) dots++;
+
+  tapPath = [];
+
+  player = {
+    x: 7 * CELL + CELL / 2,
+    y: 13 * CELL + CELL / 2,
+    dir:     { r: 0, c: 0 },
+    nextDir: { r: 0, c: 0 },
+    speed:   CELL * (3 + level * 0.3),
+    mouthOpen: 0.3, mouthDir: -1,
+    facing:    'right',
+    walkCycle: 0,
+  };
+
+  ghosts = [
+    { row:6,  col:6,  color:0 },
+    { row:6,  col:8,  color:1 },
+    { row:7,  col:6,  color:2 },
+    { row:7,  col:8,  color:3 },
+  ].map((g, i) => ({
+    color:    g.color,
+    x:        g.col  * CELL + CELL / 2,
+    y:        g.row  * CELL + CELL / 2,
+    homeRow:  g.row,
+    homeCol:  g.col,
+    dir:     { r: i < 2 ? -1 : 1, c: 0 },
+    nextDir: { r: 0, c: 0 },
+    speed:    CELL * (1.8 + level * 0.15),
+    frightened: false,
+    eaten:      false,
+    exited:     i === 0,
+    exitDelayMs: i * 1800,
+    exitAccumMs: i === 0 ? 999999 : 0,
+  }));
+}
+
+function updateHUD() {
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('lives-display').textContent = '🦖'.repeat(Math.max(0, lives));
+  document.getElementById('level-display').textContent = level;
+}
+
+// ─── CELL HELPERS ─────────────────────────────────────────────────────────────
+// Convert pixel position to grid cell, clamped to valid range.
+function pixelToCell(px, py) {
+  return {
+    row: Math.max(0, Math.min(ROWS - 1, Math.floor(py / CELL))),
+    col: Math.max(0, Math.min(COLS - 1, Math.floor(px / CELL))),
+  };
+}
+
+function cellCentre(row, col) {
+  return { x: col * CELL + CELL / 2, y: row * CELL + CELL / 2 };
+}
+
+function cellPassable(r, c) {
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return true; // tunnel wrap
+  return map[r][c] !== 1;
+}
+
+// ─── INPUT ────────────────────────────────────────────────────────────────────
+const KEY_MAP = {
+  ArrowUp:    { r:-1, c: 0, f:'up'    }, w: { r:-1, c: 0, f:'up'    },
+  ArrowDown:  { r: 1, c: 0, f:'down'  }, s: { r: 1, c: 0, f:'down'  },
+  ArrowLeft:  { r: 0, c:-1, f:'left'  }, a: { r: 0, c:-1, f:'left'  },
+  ArrowRight: { r: 0, c: 1, f:'right' }, d: { r: 0, c: 1, f:'right' },
+};
+
+document.addEventListener('keydown', e => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if (gameState !== 'playing') return;
+  const d = KEY_MAP[e.key];
+  if (!d) return;
+  tapPath = [];
+  player.nextDir = { r: d.r, c: d.c };
+  player.facing  = d.f;
+});
+
+// ─── TAP-TO-PATHFIND ──────────────────────────────────────────────────────────
+function handleTap(clientX, clientY) {
+  if (gameState !== 'playing' || !player) return;
+  const rect   = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const px = (clientX - rect.left) * scaleX;
+  const py = (clientY - rect.top)  * scaleY;
+  const { row: tr, col: tc } = pixelToCell(px, py);
+  if (map[tr][tc] === 1) return;  // tapped a wall
+
+  const { row: pr, col: pc } = pixelToCell(player.x, player.y);
+  const path = bfsPath(pr, pc, tr, tc);
+  if (path.length > 0) tapPath = path;
+}
+
+canvas.addEventListener('click',    e => handleTap(e.clientX, e.clientY));
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (e.changedTouches && e.changedTouches.length > 0) {
+    handleTap(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+  }
+}, { passive: false });
+
+// ─── TAP-PATH DRIVER ──────────────────────────────────────────────────────────
+// Called every frame before moveEntity. Peeks at tapPath[0] and sets nextDir
+// so the player continuously walks toward the tapped destination.
+function driveTapPath() {
+  if (!tapPath || tapPath.length === 0) return;
+
+  const { row: pr, col: pc } = pixelToCell(player.x, player.y);
+  const ctr  = cellCentre(pr, pc);
+  const SNAP = CELL * 0.4;
+
+  // Advance past cells we've already reached
+  while (tapPath.length > 0) {
+    const [tr, tc] = tapPath[0];
+    if (tr === pr && tc === pc &&
+        Math.abs(player.x - ctr.x) < SNAP &&
+        Math.abs(player.y - ctr.y) < SNAP) {
+      tapPath.shift();
+    } else {
+      break;
+    }
+  }
+
+  if (tapPath.length === 0) return;
+
+  const [nr, nc] = tapPath[0];
+  const dr = nr - pr;
+  const dc = nc - pc;
+
+  // If the next step isn't exactly one cell away (e.g. after respawn), re-BFS
+  if (Math.abs(dr) + Math.abs(dc) !== 1) {
+    const dest = tapPath[tapPath.length - 1];
+    tapPath = bfsPath(pr, pc, dest[0], dest[1]);
+    return;
+  }
+
+  const FACE_MAP = { '-10':'up', '10':'down', '0-1':'left', '01':'right' };
+  player.nextDir = { r: dr, c: dc };
+  player.facing  = FACE_MAP['' + dr + dc] || player.facing;
+}
+
+// ─── MOVEMENT ─────────────────────────────────────────────────────────────────
+function moveEntity(ent, dt) {
+  const { row, col } = pixelToCell(ent.x, ent.y);
+  const ctr = cellCentre(row, col);
+
+  // Only snap to centre when the entity is APPROACHING it (about to overshoot).
+  // "Approaching" means: currently moving toward ctr AND within one frame's travel.
+  // This prevents the snap firing every frame while the entity is moving away.
+  // Fixed snap threshold — small enough that the entity escapes it in one frame,
+  // large enough to catch sub-pixel alignment errors.
+  const threshold = Math.min(CELL * 0.1, ent.speed * dt * 0.6);
+  const nearCentre = Math.abs(ctr.x - ent.x) <= threshold &&
+                     Math.abs(ctr.y - ent.y) <= threshold;
+
+  if (nearCentre) {
+    const nd = ent.nextDir || { r: 0, c: 0 };
+    const wantTurn  = (nd.r || nd.c) && (nd.r !== ent.dir.r || nd.c !== ent.dir.c);
+    const wallAhead = (ent.dir.r || ent.dir.c) && !cellPassable(row + ent.dir.r, col + ent.dir.c);
+
+    if (wantTurn && cellPassable(row + nd.r, col + nd.c)) {
+      // Direction change — snap and turn
+      ent.dir = { r: nd.r, c: nd.c };
+      ent.x = ctr.x; ent.y = ctr.y;
+    } else if (wallAhead) {
+      // Wall ahead — stop and snap
+      ent.dir = { r: 0, c: 0 };
+      ent.x = ctr.x; ent.y = ctr.y;
+    }
+    // If continuing straight, do NOT snap — let the entity keep moving smoothly
+  }
+
+  if (!ent.dir.r && !ent.dir.c) return;
+
+  ent.x += ent.dir.c * ent.speed * dt;
+  ent.y += ent.dir.r * ent.speed * dt;
+
+  // Horizontal tunnel wrap
+  if (ent.x < -CELL / 2)            ent.x = COLS * CELL + CELL / 2;
+  if (ent.x > COLS * CELL + CELL/2) ent.x = -CELL / 2;
+}
+
+// ─── GHOST AI ─────────────────────────────────────────────────────────────────
+function updateGhostDir(g) {
+  const { row: gr, col: gc } = pixelToCell(g.x, g.y);
+  const ctr = cellCentre(gr, gc);
+  const gThresh = Math.min(CELL * 0.1, g.speed * (1/60) * 0.6);
+  if (Math.abs(g.x - ctr.x) > gThresh || Math.abs(g.y - ctr.y) > gThresh) return;
+  g.x = ctr.x; g.y = ctr.y;
+
+  const { row: pr, col: pc } = pixelToCell(player.x, player.y);
+  const opp   = { r: -g.dir.r, c: -g.dir.c };
+  const valid = [[-1,0],[1,0],[0,-1],[0,1]]
+    .map(([dr,dc]) => ({ r:dr, c:dc }))
+    .filter(d => !(d.r === opp.r && d.c === opp.c) && cellPassable(gr + d.r, gc + d.c));
+
+  if (!valid.length) return;
+
+  if (g.frightened) {
+    g.dir = valid[Math.floor(Math.random() * valid.length)];
+    return;
+  }
+
+  let target;
+  const color = typeof g.color === 'number' ? g.color : 0;
+  if      (color === 0) target = { r: pr,     c: pc     };
+  else if (color === 1) target = { r: pr - 2, c: pc + 2 };
+  else if (color === 2) target = { r: pr + 2, c: pc - 2 };
+  else {
+    const dist = Math.hypot(gr - pr, gc - pc);
+    target = dist > 7 ? { r: pr, c: pc } : { r: ROWS - 1, c: 0 };
+  }
+
+  valid.sort((a, b) => {
+    const da = Math.abs((gr+a.r) - target.r) + Math.abs((gc+a.c) - target.c);
+    const db = Math.abs((gr+b.r) - target.r) + Math.abs((gc+b.c) - target.c);
+    return da - db;
+  });
+  g.dir = valid[0];
+}
+
+// ─── PARTICLES ────────────────────────────────────────────────────────────────
+function spawnParticles(x, y, color, count) {
+  count = count || 8;
+  const safeColor = (typeof color === 'string' && color) ? color : '#c8a87a';
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI * 2 / count) * i;
+    particles.push({
+      x, y,
+      vx:   Math.cos(a) * (2 + Math.random() * 3),
+      vy:   Math.sin(a) * (2 + Math.random() * 3),
+      life: 1,
+      color: safeColor,
+      size:  3 + Math.random() * 3,
+    });
+  }
+}
+
+// ─── UPDATE ───────────────────────────────────────────────────────────────────
+function update(dt) {
+  if (gameState !== 'playing') return;
+
+  // Frightened timer
+  if (frightenedTimer > 0) {
+    frightenedTimer -= dt * 1000;
+    if (frightenedTimer <= 0) {
+      frightenedTimer = 0;
+      ghosts.forEach(g => { g.frightened = false; });
+    }
+  }
+
+  // Drive tap path → sets player.nextDir each frame
+  driveTapPath();
+  moveEntity(player, dt);
+
+  // Eat dots / power pellets (only when centred enough on a cell)
+  const { row: pr, col: pc } = pixelToCell(player.x, player.y);
+  const ctr = cellCentre(pr, pc);
+  if (Math.abs(player.x - ctr.x) < CELL * 0.45 &&
+      Math.abs(player.y - ctr.y) < CELL * 0.45) {
+    const cell = map[pr][pc];
+    if (cell === 2) {
+      map[pr][pc] = 0; score += 10; dots--;
+      spawnParticles(player.x, player.y, C.dot, 4);
+      updateHUD();
+    } else if (cell === 3) {
+      map[pr][pc] = 0; score += 50; dots--;
+      frightenedTimer = 7000;
+      ghosts.forEach(g => { g.frightened = true; g.eaten = false; });
+      spawnParticles(player.x, player.y, C.power, 10);
+      updateHUD();
+    }
+  }
+
+  if (dots <= 0) {
+    level++;
+    updateHUD();
+    showMessage('LEVEL ' + level + '!', 'YOU ATE EVERYTHING!\nGET READY...', () => {
+      initLevel(); gameState = 'playing';
+    });
+    gameState = 'paused';
+    return;
+  }
+
+  // Ghost update
+  ghosts.forEach(g => {
+    g.exitAccumMs += dt * 1000;
+    if (!g.exited && g.exitAccumMs >= g.exitDelayMs) g.exited = true;
+    if (!g.exited) return;
+
+    updateGhostDir(g);
+    moveEntity(g, dt);
+
+    const dist = Math.hypot(g.x - player.x, g.y - player.y);
+    if (dist < CELL * 0.75) {
+      if (g.frightened && !g.eaten) {
+        // Eat ghost
+        g.eaten = true; g.frightened = false; score += 200;
+        spawnParticles(g.x, g.y, C.ghost[g.color] || '#fff', 12);
+        updateHUD();
+        // Teleport back to home
+        g.x = g.homeCol * CELL + CELL / 2;
+        g.y = g.homeRow * CELL + CELL / 2;
+        g.dir    = { r: 0, c: 0 };
+        g.nextDir = { r: 0, c: 0 };
+        g.exited = false; g.exitAccumMs = 0; g.exitDelayMs = 2000;
+        g.eaten = false;
+      } else if (!g.frightened && !g.eaten) {
+        // Player hit
+        lives--;
+        updateHUD();
+        tapPath = [];
+        spawnParticles(player.x, player.y, C.dinoGreen, 16);
+        gameState = 'paused';
+        if (lives <= 0) {
+          showMessage('GAME OVER', 'SCORE: ' + score + '\nTRY AGAIN!', () => {
+            initGame(); gameState = 'playing';
+          });
+        } else {
+          showMessage('OH NO!', 'YOU LOST A LIFE!\nGET READY...', () => {
+            initLevel(); gameState = 'playing';
+          });
+        }
+      }
+    }
+  });
+
+  // Particles
+  particles = particles.filter(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.88; p.vy *= 0.88;
+    p.life -= dt * 2;
+    return p.life > 0;
+  });
+
+  // Mouth + walk animation
+  player.mouthOpen += dt * 5 * player.mouthDir;
+  if (player.mouthOpen > 0.42) player.mouthDir = -1;
+  if (player.mouthOpen < 0.02) player.mouthDir =  1;
+  player.walkCycle += dt * 8;
+}
+
+// ─── DRAW MAP ─────────────────────────────────────────────────────────────────
+function drawMap() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x    = c * CELL, y = r * CELL;
+      const cell = map[r][c];
+      if (cell === 1) {
+        ctx.fillStyle = C.wall;
+        roundRect(x+1, y+1, CELL-2, CELL-2, 4); ctx.fill();
+        ctx.fillStyle = C.wallAccent;
+        roundRect(x+2, y+2, CELL-6, 3, 2); ctx.fill();
+      } else if (cell === 2) {
+        ctx.fillStyle = C.dot;
+        ctx.beginPath();
+        ctx.arc(x + CELL/2, y + CELL/2, CELL * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (cell === 3) {
+        const pulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.005);
+        ctx.fillStyle   = C.power;
+        ctx.shadowColor = C.power;
+        ctx.shadowBlur  = 8 * pulse;
+        ctx.beginPath();
+        ctx.arc(x + CELL/2, y + CELL/2, CELL * 0.28 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+}
+
+// ─── DRAW TAP TARGET ──────────────────────────────────────────────────────────
+function drawTapTarget() {
+  if (!tapPath || tapPath.length === 0) return;
+  const last  = tapPath[tapPath.length - 1];
+  const x     = last[1] * CELL + CELL / 2;
+  const y     = last[0] * CELL + CELL / 2;
+  const pulse = 0.55 + 0.45 * Math.sin(Date.now() * 0.009);
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(74,158,107,' + pulse + ')';
+  ctx.lineWidth   = 2;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.arc(x, y, CELL * 0.38, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);   // always reset dash inside save/restore
+  ctx.fillStyle = 'rgba(74,158,107,' + (pulse * 0.25) + ')';
+  ctx.beginPath(); ctx.arc(x, y, CELL * 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// ─── DRAW T-REX 🦖 ────────────────────────────────────────────────────────────
+// Self-contained: receives all data it needs as arguments, no globals accessed.
+function drawDino(px, py, mouthOpen, facing, walkCycle, isMoving) {
+  const S = CELL * 0.92;
+
+  ctx.save();
+  ctx.translate(px, py);
+
+  if (facing === 'left')  ctx.scale(-1, 1);
+  if (facing === 'up')    ctx.rotate(-Math.PI / 2);
+  if (facing === 'down')  ctx.rotate( Math.PI / 2);
+
+  const legSwing = isMoving ? Math.sin(walkCycle) * 0.18 : 0;
+
+  // Tail
+  ctx.fillStyle = C.dinoGreen;
+  ctx.beginPath();
+  ctx.moveTo(-S*0.15, S*0.10);
+  ctx.bezierCurveTo(-S*0.50, S*0.08, -S*0.70, -S*0.12, -S*0.55, -S*0.28);
+  ctx.bezierCurveTo(-S*0.40, -S*0.40, -S*0.25, -S*0.20, -S*0.20, -S*0.04);
+  ctx.closePath(); ctx.fill();
+
+  // Hind legs
+  for (let i = 0; i < 2; i++) {
+    const tx    = i === 0 ? -S*0.08 : S*0.10;
+    const swing = i === 0 ? -legSwing : legSwing;
+    ctx.save();
+    ctx.translate(tx, S*0.18);
+    ctx.rotate(swing);
+    ctx.fillStyle = C.dinoDark;
+    roundRect(-S*0.07, 0, S*0.12, S*0.24, S*0.05); ctx.fill();
+    ctx.fillStyle = C.dinoGreen;
+    ctx.beginPath();
+    ctx.ellipse(S*0.01, S*0.24, S*0.10, S*0.055, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Body
+  ctx.fillStyle = C.dinoGreen;
+  ctx.beginPath();
+  ctx.ellipse(S*0.02, S*0.08, S*0.30, S*0.24, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Belly
+  ctx.fillStyle = C.dinoBelly;
+  ctx.beginPath();
+  ctx.ellipse(S*0.06, S*0.12, S*0.16, S*0.14, 0.2, 0, Math.PI*2);
+  ctx.fill();
+
+  // Dorsal spines
+  ctx.fillStyle = C.dinoDark;
+  const spineData = [
+    [-S*0.18, -S*0.20, S*0.06, S*0.15],
+    [-S*0.04, -S*0.26, S*0.05, S*0.18],
+    [ S*0.10, -S*0.22, S*0.04, S*0.14],
+  ];
+  for (const [sx, sy, sw, sh] of spineData) {
+    ctx.beginPath();
+    ctx.moveTo(sx - sw/2, sy + sh);
+    ctx.lineTo(sx, sy);
+    ctx.lineTo(sx + sw/2, sy + sh);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Tiny arm
+  ctx.fillStyle = C.dinoDark;
+  ctx.beginPath();
+  ctx.moveTo(S*0.20, S*0.00);
+  ctx.lineTo(S*0.32, S*0.08);
+  ctx.lineTo(S*0.28, S*0.14);
+  ctx.lineTo(S*0.16, S*0.08);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = C.dinoLight; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(S*0.32, S*0.08); ctx.lineTo(S*0.36, S*0.06); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(S*0.30, S*0.12); ctx.lineTo(S*0.34, S*0.12); ctx.stroke();
+
+  // Neck
+  ctx.fillStyle = C.dinoGreen;
+  ctx.beginPath();
+  ctx.moveTo(S*0.18, -S*0.12);
+  ctx.bezierCurveTo(S*0.28, -S*0.20, S*0.34, -S*0.28, S*0.30, -S*0.36);
+  ctx.bezierCurveTo(S*0.24, -S*0.30, S*0.14, -S*0.22, S*0.10, -S*0.14);
+  ctx.closePath(); ctx.fill();
+
+  // Head
+  const mo = Math.max(0, Math.min(1, mouthOpen)); // clamp
+  ctx.fillStyle = C.dinoGreen;
+  ctx.beginPath();
+  ctx.moveTo(S*0.20, -S*0.36);
+  ctx.bezierCurveTo(S*0.22, -S*0.50, S*0.48, -S*0.50, S*0.54, -S*0.38);
+  ctx.lineTo(S*0.54, -S*0.22);
+  ctx.lineTo(S*0.50, -S*0.18 + mo*S*0.5);
+  ctx.bezierCurveTo(S*0.36, -S*0.10, S*0.18, -S*0.14, S*0.18, -S*0.24);
+  ctx.closePath(); ctx.fill();
+
+  // Lower jaw
+  ctx.fillStyle = C.dinoGreen;
+  ctx.beginPath();
+  ctx.moveTo(S*0.22, -S*0.22);
+  ctx.lineTo(S*0.50, -S*0.18 + mo*S*0.5);
+  ctx.bezierCurveTo(S*0.36, -S*0.08, S*0.20, -S*0.12, S*0.18, -S*0.22);
+  ctx.closePath(); ctx.fill();
+
+  // Mouth interior + teeth
+  if (mo > 0.06) {
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath();
+    ctx.moveTo(S*0.24, -S*0.22);
+    ctx.lineTo(S*0.50, -S*0.20 + mo*S*0.45);
+    ctx.lineTo(S*0.48, -S*0.22);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 3; i++) {
+      const tx = S * (0.28 + i * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(tx,          -S*0.22);
+      ctx.lineTo(tx + S*0.025,-S*0.28);
+      ctx.lineTo(tx + S*0.05, -S*0.22);
+      ctx.closePath(); ctx.fill();
+    }
+    const baseY = -S*0.20 + mo*S*0.45;
+    for (let i = 0; i < 2; i++) {
+      const tx = S * (0.31 + i * 0.08);
+      ctx.beginPath();
+      ctx.moveTo(tx,          baseY);
+      ctx.lineTo(tx + S*0.025, baseY - S*0.06);
+      ctx.lineTo(tx + S*0.05,  baseY);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // Nostril
+  ctx.fillStyle = C.dinoDark;
+  ctx.beginPath();
+  ctx.ellipse(S*0.48, -S*0.42, S*0.025, S*0.02, 0.3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eye sclera
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(S*0.36, -S*0.44, S*0.075, S*0.065, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Iris
+  ctx.fillStyle = '#2ecc71';
+  ctx.beginPath();
+  ctx.arc(S*0.37, -S*0.44, S*0.050, 0, Math.PI*2);
+  ctx.fill();
+  // Pupil
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.arc(S*0.375, -S*0.44, S*0.028, 0, Math.PI*2);
+  ctx.fill();
+  // Shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(S*0.390, -S*0.455, S*0.012, 0, Math.PI*2);
+  ctx.fill();
+
+  // Brow ridge
+  ctx.strokeStyle = C.dinoDark;
+  ctx.lineWidth   = S * 0.04;
+  ctx.lineCap     = 'round';
+  ctx.beginPath();
+  ctx.moveTo(S*0.29, -S*0.50);
+  ctx.lineTo(S*0.44, -S*0.50);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ─── DRAW GHOST ───────────────────────────────────────────────────────────────
+function drawGhost(g) {
+  if (g.eaten) return;
+  const x = g.x, y = g.y, r = CELL * 0.42;
+  const isFright = g.frightened && !g.eaten;
+  const blink    = isFright && frightenedTimer < 2000 && Math.floor(frightenedTimer / 300) % 2 === 0;
+  const colorIdx = (typeof g.color === 'number' && g.color >= 0 && g.color < C.ghost.length) ? g.color : 0;
+  const gColor   = isFright ? (blink ? '#e8b05c' : C.ghostFright) : C.ghost[colorIdx];
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = gColor;
+  ctx.beginPath();
+  ctx.arc(0, -r*0.1, r, Math.PI, 0);
+  const wr = (r * 2) / 3;
+  for (let i = 0; i < 3; i++) {
+    const wx = r - i * wr - wr / 2;
+    ctx.arc(wx, r*0.9, wr/2, 0, Math.PI, i % 2 !== 0);
+  }
+  ctx.closePath(); ctx.fill();
+
+  if (!isFright) {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(-r*0.3,-r*0.1, r*0.22,r*0.28, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse( r*0.3,-r*0.1, r*0.22,r*0.28, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#3060cc';
+    ctx.beginPath(); ctx.arc(-r*0.25,-r*0.05, r*0.12, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( r*0.35,-r*0.05, r*0.12, 0, Math.PI*2); ctx.fill();
+  } else {
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(-r*0.3,-r*0.1, r*0.15, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc( r*0.3,-r*0.1, r*0.15, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-r*0.4, r*0.3); ctx.lineTo(-r*0.2, r*0.15);
+    ctx.lineTo(0, r*0.3);      ctx.lineTo( r*0.2, r*0.15);
+    ctx.lineTo( r*0.4, r*0.3); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawMap();
+  drawTapTarget();
+
+  if (particles) {
+    particles.forEach(p => {
+      if (!p || p.life <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life));
+      ctx.fillStyle   = p.color || '#fff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.1, p.size * p.life), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  if (gameState === 'playing' && player) {
+    const isMoving = !!(player.dir.r || player.dir.c);
+    drawDino(player.x, player.y, player.mouthOpen, player.facing, player.walkCycle, isMoving);
+  }
+
+  if (ghosts) ghosts.forEach(g => drawGhost(g));
+}
+
+// ─── GAME LOOP ────────────────────────────────────────────────────────────────
+let lastTs = 0;
+function loop(ts) {
+  try {
+    const dt = Math.min((ts - lastTs) / 1000, 0.05);
+    lastTs = ts;
+    update(dt);
+    render();
+  } catch (err) {
+    // Log silently — never let an error kill the animation loop
+    console.error('Game loop error:', err);
+  }
+  requestAnimationFrame(loop);
+}
+
+// ─── MESSAGE OVERLAY ──────────────────────────────────────────────────────────
+// Single clean implementation, no duplicate button listeners.
+let pendingCallback = null;
+
+function showMessage(title, sub, onPlay) {
+  pendingCallback = onPlay;
+  document.getElementById('msg-title').textContent = title;
+  document.getElementById('msg-sub').textContent   = sub;
+  document.getElementById('message-overlay').classList.add('visible');
+}
+
+document.getElementById('msg-btn').addEventListener('click', () => {
+  document.getElementById('message-overlay').classList.remove('visible');
+  if (typeof pendingCallback === 'function') {
+    const cb = pendingCallback;
+    pendingCallback = null;
+    cb();
+  }
+});
+
+// ─── START ────────────────────────────────────────────────────────────────────
+gameState = 'paused';
+initGame();
+lastTs = performance.now();
+requestAnimationFrame(loop);
+
+showMessage(
+  '🦖 DINO-MAN',
+  'EAT ALL THE DOTS!\nAVOID THE GHOSTS!\nPOWER PELLETS = FEAST!\nTAP ANYWHERE TO PATHFIND!',
+  () => { gameState = 'playing'; }
+);
+document.getElementById('msg-btn').textContent = "LET'S GO!";
+</script>
+</body>
+</html>
