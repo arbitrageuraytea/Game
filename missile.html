@@ -349,86 +349,306 @@ window.addEventListener('mousemove', function onFirstMouse(){
 }, { once:true });
 
 // ═══════════════════════════════════
-// WEB AUDIO
+// WEB AUDIO — realistic synthesis
 // ═══════════════════════════════════
 let AC=null;
 function getAC(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
 function resumeAC(){const ac=getAC();if(ac&&ac.state==='suspended')ac.resume();}
 
+// ── INTERCEPTOR LAUNCH ──────────────────────────────────────────────────────
+// Layers: ignition crack (noise transient) + bandpass-filtered roar + rising motor shriek
 function playLaunch(){
-  const ac=getAC();if(!ac)return;try{
-    const o=ac.createOscillator(),g=ac.createGain();
-    o.connect(g);g.connect(ac.destination);
-    o.type='sawtooth';o.frequency.setValueAtTime(800,ac.currentTime);
-    o.frequency.exponentialRampToValueAtTime(200,ac.currentTime+0.18);
-    g.gain.setValueAtTime(0.16,ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.20);
-    o.start();o.stop(ac.currentTime+0.21);
-  }catch(e){}}
+  const ac=getAC();if(!ac)return;
+  try{
+    const now=ac.currentTime;
 
-function playIncoming(){
-  const ac=getAC();if(!ac)return;try{
-    const o=ac.createOscillator(),g=ac.createGain();
-    o.connect(g);g.connect(ac.destination);
-    o.type='sine';o.frequency.setValueAtTime(120,ac.currentTime);
-    o.frequency.setValueAtTime(180,ac.currentTime+0.08);
-    o.frequency.setValueAtTime(120,ac.currentTime+0.16);
-    g.gain.setValueAtTime(0,ac.currentTime);
-    g.gain.linearRampToValueAtTime(0.10,ac.currentTime+0.04);
-    g.gain.linearRampToValueAtTime(0.10,ac.currentTime+0.20);
-    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.32);
-    o.start();o.stop(ac.currentTime+0.33);
-  }catch(e){}}
+    // Layer 1: ignition crack — short burst of broadband noise
+    const crackLen=Math.floor(ac.sampleRate*0.08);
+    const crackBuf=ac.createBuffer(1,crackLen,ac.sampleRate);
+    const crackD=crackBuf.getChannelData(0);
+    for(let i=0;i<crackLen;i++) crackD[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.012));
+    const crackSrc=ac.createBufferSource();
+    crackSrc.buffer=crackBuf;
+    const crackG=ac.createGain();
+    crackG.gain.setValueAtTime(1.2,now);
+    crackG.gain.exponentialRampToValueAtTime(0.001,now+0.08);
+    crackSrc.connect(crackG);crackG.connect(ac.destination);
+    crackSrc.start(now);
 
+    // Layer 2: rocket roar — white noise through a bandpass filter
+    const roarLen=Math.floor(ac.sampleRate*0.55);
+    const roarBuf=ac.createBuffer(1,roarLen,ac.sampleRate);
+    const roarD=roarBuf.getChannelData(0);
+    for(let i=0;i<roarLen;i++) roarD[i]=(Math.random()*2-1);
+    const roarSrc=ac.createBufferSource();
+    roarSrc.buffer=roarBuf;
+    const bp=ac.createBiquadFilter();
+    bp.type='bandpass'; bp.frequency.setValueAtTime(800,now);
+    bp.frequency.exponentialRampToValueAtTime(2400,now+0.18);
+    bp.Q.value=1.2;
+    const roarG=ac.createGain();
+    roarG.gain.setValueAtTime(0,now);
+    roarG.gain.linearRampToValueAtTime(0.55,now+0.04);
+    roarG.gain.setValueAtTime(0.55,now+0.22);
+    roarG.gain.exponentialRampToValueAtTime(0.001,now+0.55);
+    roarSrc.connect(bp);bp.connect(roarG);roarG.connect(ac.destination);
+    roarSrc.start(now);
+
+    // Layer 3: motor shriek — sawtooth rising pitch (solid-fuel motor scream)
+    const osc=ac.createOscillator();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(180,now+0.03);
+    osc.frequency.exponentialRampToValueAtTime(1800,now+0.30);
+    const oscG=ac.createGain();
+    oscG.gain.setValueAtTime(0,now);
+    oscG.gain.linearRampToValueAtTime(0.20,now+0.05);
+    oscG.gain.setValueAtTime(0.20,now+0.22);
+    oscG.gain.exponentialRampToValueAtTime(0.001,now+0.38);
+    // slight distortion character via waveshaper
+    const ws=ac.createWaveShaper();
+    const curve=new Float32Array(256);
+    for(let i=0;i<256;i++){const x=i*2/255-1;curve[i]=x<0?-Math.pow(-x,0.6):Math.pow(x,0.6);}
+    ws.curve=curve;
+    osc.connect(ws);ws.connect(oscG);oscG.connect(ac.destination);
+    osc.start(now+0.02);osc.stop(now+0.40);
+
+    // Layer 4: low-end thump for launch kick
+    const kick=ac.createOscillator();
+    kick.type='sine';kick.frequency.setValueAtTime(140,now);
+    kick.frequency.exponentialRampToValueAtTime(40,now+0.12);
+    const kickG=ac.createGain();
+    kickG.gain.setValueAtTime(0.5,now);
+    kickG.gain.exponentialRampToValueAtTime(0.001,now+0.14);
+    kick.connect(kickG);kickG.connect(ac.destination);
+    kick.start(now);kick.stop(now+0.15);
+  }catch(e){}
+}
+
+// ── INTERCEPTION BLAST ──────────────────────────────────────────────────────
+// A real midair missile explosion: massive shockwave thump + long debris roar
 function playIntercept(){
-  const ac=getAC();if(!ac)return;try{
-    const buf=ac.createBuffer(1,Math.floor(ac.sampleRate*0.15),ac.sampleRate);
-    const d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.02));
-    const s=ac.createBufferSource(),g=ac.createGain();
-    s.buffer=buf;s.connect(g);g.connect(ac.destination);
-    g.gain.setValueAtTime(0.45,ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.15);
-    s.start();
-    const o=ac.createOscillator(),g2=ac.createGain();
-    o.connect(g2);g2.connect(ac.destination);
-    o.type='sine';o.frequency.setValueAtTime(1200,ac.currentTime);
-    o.frequency.exponentialRampToValueAtTime(600,ac.currentTime+0.12);
-    g2.gain.setValueAtTime(0.12,ac.currentTime);
-    g2.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.12);
-    o.start();o.stop(ac.currentTime+0.13);
-  }catch(e){}}
+  const ac=getAC();if(!ac)return;
+  try{
+    const now=ac.currentTime;
 
+    // Layer 1: initial pressure-wave transient — very loud short noise spike
+    const spikeLen=Math.floor(ac.sampleRate*0.04);
+    const spikeBuf=ac.createBuffer(1,spikeLen,ac.sampleRate);
+    const spikeD=spikeBuf.getChannelData(0);
+    for(let i=0;i<spikeLen;i++) spikeD[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.005));
+    const spikeSrc=ac.createBufferSource();
+    spikeSrc.buffer=spikeBuf;
+    const spikeG=ac.createGain();
+    spikeG.gain.setValueAtTime(2.0,now);
+    spikeG.gain.exponentialRampToValueAtTime(0.001,now+0.04);
+    spikeSrc.connect(spikeG);spikeG.connect(ac.destination);
+    spikeSrc.start(now);
+
+    // Layer 2: explosion body — full-spectrum noise with long decay (the fireball roar)
+    const bodyLen=Math.floor(ac.sampleRate*1.2);
+    const bodyBuf=ac.createBuffer(1,bodyLen,ac.sampleRate);
+    const bodyD=bodyBuf.getChannelData(0);
+    for(let i=0;i<bodyLen;i++) bodyD[i]=(Math.random()*2-1);
+    const bodySrc=ac.createBufferSource();
+    bodySrc.buffer=bodyBuf;
+    // low-pass to give it a bassy fireball character
+    const lp=ac.createBiquadFilter();
+    lp.type='lowpass';lp.frequency.setValueAtTime(3200,now);
+    lp.frequency.exponentialRampToValueAtTime(400,now+0.8);
+    lp.Q.value=0.5;
+    const bodyG=ac.createGain();
+    bodyG.gain.setValueAtTime(0,now);
+    bodyG.gain.linearRampToValueAtTime(1.0,now+0.015);  // instant attack
+    bodyG.gain.setValueAtTime(1.0,now+0.04);
+    bodyG.gain.exponentialRampToValueAtTime(0.001,now+1.1);
+    bodySrc.connect(lp);lp.connect(bodyG);bodyG.connect(ac.destination);
+    bodySrc.start(now);
+
+    // Layer 3: sub-bass shockwave — deep sine thump
+    const sub=ac.createOscillator();
+    sub.type='sine';sub.frequency.setValueAtTime(80,now);
+    sub.frequency.exponentialRampToValueAtTime(22,now+0.35);
+    const subG=ac.createGain();
+    subG.gain.setValueAtTime(0,now);
+    subG.gain.linearRampToValueAtTime(0.9,now+0.01);
+    subG.gain.exponentialRampToValueAtTime(0.001,now+0.40);
+    sub.connect(subG);subG.connect(ac.destination);
+    sub.start(now);sub.stop(now+0.42);
+
+    // Layer 4: mid crunch — slightly higher sawtooth burst for the metallic crack
+    const crunch=ac.createOscillator();
+    crunch.type='sawtooth';crunch.frequency.setValueAtTime(220,now);
+    crunch.frequency.exponentialRampToValueAtTime(55,now+0.18);
+    const crunchG=ac.createGain();
+    crunchG.gain.setValueAtTime(0.35,now);
+    crunchG.gain.exponentialRampToValueAtTime(0.001,now+0.20);
+    const crunchDist=ac.createWaveShaper();
+    const dc=new Float32Array(256);
+    for(let i=0;i<256;i++){const x=i*2/255-1;dc[i]=Math.max(-1,Math.min(1,x*4));}
+    crunchDist.curve=dc;
+    crunch.connect(crunchDist);crunchDist.connect(crunchG);crunchG.connect(ac.destination);
+    crunch.start(now);crunch.stop(now+0.22);
+
+    // Layer 5: secondary rumble (shockwave echo)
+    const rumble=ac.createOscillator();
+    rumble.type='sine';rumble.frequency.setValueAtTime(45,now+0.12);
+    rumble.frequency.exponentialRampToValueAtTime(28,now+0.65);
+    const rumbleG=ac.createGain();
+    rumbleG.gain.setValueAtTime(0,now+0.10);
+    rumbleG.gain.linearRampToValueAtTime(0.4,now+0.18);
+    rumbleG.gain.exponentialRampToValueAtTime(0.001,now+0.70);
+    rumble.connect(rumbleG);rumbleG.connect(ac.destination);
+    rumble.start(now+0.10);rumble.stop(now+0.72);
+  }catch(e){}
+}
+
+// ── GROUND IMPACT ────────────────────────────────────────────────────────────
 function playImpact(){
-  const ac=getAC();if(!ac)return;try{
-    const buf=ac.createBuffer(1,Math.floor(ac.sampleRate*0.55),ac.sampleRate);
-    const d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.09));
-    const s=ac.createBufferSource(),g=ac.createGain();
-    s.buffer=buf;s.connect(g);g.connect(ac.destination);
-    g.gain.setValueAtTime(0.65,ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.50);
-    s.start();
-    const o=ac.createOscillator(),g2=ac.createGain();
-    o.connect(g2);g2.connect(ac.destination);
-    o.type='sine';o.frequency.setValueAtTime(60,ac.currentTime);
-    o.frequency.exponentialRampToValueAtTime(25,ac.currentTime+0.4);
-    g2.gain.setValueAtTime(0.35,ac.currentTime);
-    g2.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.45);
-    o.start();o.stop(ac.currentTime+0.46);
-  }catch(e){}}
+  const ac=getAC();if(!ac)return;
+  try{
+    const now=ac.currentTime;
+    // bigger version of intercept + even deeper sub
+    const bodyLen=Math.floor(ac.sampleRate*0.7);
+    const bodyBuf=ac.createBuffer(1,bodyLen,ac.sampleRate);
+    const bodyD=bodyBuf.getChannelData(0);
+    for(let i=0;i<bodyLen;i++) bodyD[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.12));
+    const bodySrc=ac.createBufferSource();
+    bodySrc.buffer=bodyBuf;
+    const lp=ac.createBiquadFilter();
+    lp.type='lowpass';lp.frequency.setValueAtTime(2000,now);lp.Q.value=0.4;
+    const bodyG=ac.createGain();
+    bodyG.gain.setValueAtTime(1.4,now);
+    bodyG.gain.exponentialRampToValueAtTime(0.001,now+0.65);
+    bodySrc.connect(lp);lp.connect(bodyG);bodyG.connect(ac.destination);
+    bodySrc.start(now);
+    // deep sub thump
+    const sub=ac.createOscillator();
+    sub.type='sine';sub.frequency.setValueAtTime(55,now);
+    sub.frequency.exponentialRampToValueAtTime(18,now+0.45);
+    const subG=ac.createGain();
+    subG.gain.setValueAtTime(1.0,now);
+    subG.gain.exponentialRampToValueAtTime(0.001,now+0.50);
+    sub.connect(subG);subG.connect(ac.destination);
+    sub.start(now);sub.stop(now+0.52);
+  }catch(e){}
+}
 
+// ── GUNSHOT ──────────────────────────────────────────────────────────────────
 function playGunshot(){
   const ac=getAC();if(!ac)return;try{
-    const buf=ac.createBuffer(1,Math.floor(ac.sampleRate*0.06),ac.sampleRate);
+    const now=ac.currentTime;
+    const buf=ac.createBuffer(1,Math.floor(ac.sampleRate*0.07),ac.sampleRate);
     const d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.008));
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(ac.sampleRate*0.009));
     const s=ac.createBufferSource(),g=ac.createGain();
     s.buffer=buf;s.connect(g);g.connect(ac.destination);
-    g.gain.setValueAtTime(0.30,ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.06);
-    s.start();
-  }catch(e){}}
+    g.gain.setValueAtTime(0.45,now);
+    g.gain.exponentialRampToValueAtTime(0.001,now+0.07);
+    s.start(now);
+  }catch(e){}
+}
+
+// ── DRONE LAWNMOWER ENGINE ────────────────────────────────────────────────────
+// Shahed-136 uses a Mado 741 two-stroke: harsh buzz ~95Hz + strong odd harmonics
+// Returns {stop} function to kill the sound when drone dies
+function startDroneSound(pitchVariance){
+  const ac=getAC();if(!ac)return null;
+  try{
+    const now=ac.currentTime;
+    // base pitch 90–105Hz, slight random variation per drone
+    const baseFreq=90+pitchVariance*15;
+
+    const nodes=[];
+    const masterG=ac.createGain();
+    masterG.gain.setValueAtTime(0,now);
+    masterG.gain.linearRampToValueAtTime(0.28,now+0.8); // fade in
+    masterG.connect(ac.destination);
+
+    // Oscillator 1: fundamental — saw wave for two-stroke character
+    const o1=ac.createOscillator();
+    o1.type='sawtooth';o1.frequency.value=baseFreq;
+    // slight flutter: LFO wobble on freq ±2Hz (engine vibration)
+    const lfo=ac.createOscillator();
+    lfo.type='sine';lfo.frequency.value=6+pitchVariance*2;
+    const lfoG=ac.createGain();lfoG.gain.value=2.5;
+    lfo.connect(lfoG);lfoG.connect(o1.frequency);
+    lfo.start();nodes.push(lfo);
+
+    // Oscillator 2: 3rd harmonic (two-strokes are very rich in odd harmonics)
+    const o2=ac.createOscillator();
+    o2.type='square';o2.frequency.value=baseFreq*3;
+    const g2=ac.createGain();g2.gain.value=0.3;
+    o2.connect(g2);g2.connect(masterG);
+    o2.start();nodes.push(o2);
+
+    // Oscillator 3: 5th harmonic (buzz character)
+    const o3=ac.createOscillator();
+    o3.type='square';o3.frequency.value=baseFreq*5;
+    const g3=ac.createGain();g3.gain.value=0.12;
+    o3.connect(g3);g3.connect(masterG);
+    o3.start();nodes.push(o3);
+
+    // Distortion waveshaper to add harshness (lawnmower grit)
+    const ws=ac.createWaveShaper();
+    const curve=new Float32Array(512);
+    for(let i=0;i<512;i++){
+      const x=i*2/511-1;
+      // soft clip with extra grit
+      curve[i]=Math.sign(x)*(1-Math.exp(-Math.abs(x)*4));
+    }
+    ws.curve=curve;ws.oversample='4x';
+
+    o1.connect(ws);ws.connect(masterG);
+    o1.start();nodes.push(o1);
+
+    // Band-pass filter centered at fundamental to shape timbre
+    const bp=ac.createBiquadFilter();
+    bp.type='peaking';bp.frequency.value=baseFreq*2;
+    bp.gain.value=8;bp.Q.value=1.5;
+    masterG.connect(bp);bp.connect(ac.destination);
+
+    return {
+      stop:function(){
+        try{
+          const t=ac.currentTime;
+          masterG.gain.cancelScheduledValues(t);
+          masterG.gain.setValueAtTime(masterG.gain.value,t);
+          masterG.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+          setTimeout(()=>{
+            nodes.forEach(n=>{try{n.stop();}catch(e){}});
+            try{o1.disconnect();o2.disconnect();o3.disconnect();masterG.disconnect();}catch(e){}
+          },450);
+        }catch(e){}
+      },
+      // call each frame to update pan/volume based on drone position
+      update:function(x,y,W,H){
+        try{
+          // volume drops slightly with distance from center
+          const dist=Math.hypot(x-W/2,y-H/2);
+          const vol=Math.max(0.08,0.28*(1-dist/(W*0.7)));
+          masterG.gain.setTargetAtTime(vol,ac.currentTime,0.1);
+        }catch(e){}
+      }
+    };
+  }catch(e){return null;}
+}
+
+// ── INCOMING MISSILE WARNING ─────────────────────────────────────────────────
+function playIncoming(){
+  const ac=getAC();if(!ac)return;try{
+    const now=ac.currentTime;
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.type='sine';o.frequency.setValueAtTime(110,now);
+    o.frequency.setValueAtTime(165,now+0.09);
+    o.frequency.setValueAtTime(110,now+0.18);
+    g.gain.setValueAtTime(0,now);
+    g.gain.linearRampToValueAtTime(0.09,now+0.04);
+    g.gain.linearRampToValueAtTime(0.09,now+0.22);
+    g.gain.exponentialRampToValueAtTime(0.001,now+0.34);
+    o.start(now);o.stop(now+0.35);
+  }catch(e){}
+}
 
 // ═══════════════════════════════════
 // CONSTANTS
@@ -561,9 +781,13 @@ function spawnDrone(){
   const tx=CY+(Math.random()-.5)*200;
   const ty=sy; // level flight
   const droneSpd=1.4+(wave-1)*0.10;
-  missiles.push({type,sx,sy,tx,ty,cpx:(sx+tx)/2,cpy:sy,
+  const pitchV=Math.random(); // unique pitch variance per drone
+  const droneObj={type,sx,sy,tx,ty,cpx:(sx+tx)/2,cpy:sy,
     t:0,spd:0,droneSpd,wp:0,alive:true,trail:[],x:sx,y:sy,
-    angle:fl?0:Math.PI,isDrone:true});
+    angle:fl?0:Math.PI,isDrone:true,snd:null};
+  missiles.push(droneObj);
+  // Start lawnmower engine sound — attach to drone object
+  droneObj.snd=startDroneSound(pitchV);
   addThreat(type.name);playIncoming();
 }
 
@@ -640,6 +864,9 @@ function update(dt){
     if(!m.alive){missiles.splice(i,1);continue;}
 
     if(m.isDrone){
+      // update lawnmower sound position/volume each frame
+      if(m.snd)m.snd.update(m.x,m.y,W,H);
+
       const distX=Math.abs(m.tx-m.x);
       const spd=m.droneSpd*(dt/16);
       if(distX<8){
@@ -649,6 +876,7 @@ function update(dt){
         m.trail.push({x:m.x,y:m.y});
         if(m.trail.length>20)m.trail.shift();
         if(m.y>=BY-5){
+          if(m.snd)m.snd.stop(); // kill engine on impact
           remThreat(m.type.name);
           hp=Math.max(0,hp-8);
           boom(m.x,BY-10,m.type.brgb,'hit');
@@ -729,6 +957,7 @@ function update(dt){
       const m=missiles[j];
       if(!m.alive||!m.isDrone)continue;
       if(Math.hypot(m.x-b.x,m.y-b.y)<18){
+        if(m.snd)m.snd.stop(); // kill engine
         remThreat(m.type.name);score+=m.type.pts*wave;
         boom(m.x,m.y,[100,160,60],'intercept');
         addLbl('+'+m.type.pts*wave,m.x,m.y-20,'#cc4400',1000);
@@ -1122,6 +1351,8 @@ function startGame(){
   document.getElementById('ov-start').classList.add('hidden');
   document.getElementById('ov-over').classList.add('hidden');
   score=0;wave=1;hp=100;
+  // Stop any lingering drone engine sounds before clearing arrays
+  missiles.forEach(m=>{if(m.isDrone&&m.snd)m.snd.stop();});
   missiles=[];ceptors=[];bullets=[];explosions=[];particles=[];labels=[];
   threats={};renderThreats();
   waveSpawned=0;waveDone=false;waveTimer=0;
