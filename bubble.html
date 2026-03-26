@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Bubble Pop</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 100vw; height: 100dvh; overflow: hidden;
+  touch-action: none; user-select: none;
+  background: linear-gradient(160deg, #e8f4fd 0%, #fde8f5 50%, #fdf5e8 100%);
+  font-family: 'Fredoka One', cursive;
+}
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ── HUD ── */
+#hud {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 16px 20px; pointer-events: none; z-index: 10; gap: 10px;
+}
+.player-pill {
+  background: rgba(255,255,255,0.75); border-radius: 20px; padding: 10px 18px;
+  backdrop-filter: blur(14px); box-shadow: 0 2px 18px rgba(0,0,0,0.07);
+  min-width: 100px; flex: 1; border: 2px solid transparent;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.player-pill.leading { border-color: rgba(180,120,255,0.45); box-shadow: 0 2px 22px rgba(180,120,255,0.2); }
+.p1-pill { text-align: left; }
+.p2-pill { text-align: right; }
+.pill-name { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(0,0,0,0.3); }
+.pill-score { font-size: 34px; line-height: 1.1; }
+.p1-pill .pill-score { color: #e06090; }
+.p2-pill .pill-score { color: #6090e0; }
+.timer-pill {
+  background: rgba(255,255,255,0.75); border-radius: 20px; padding: 10px 18px;
+  backdrop-filter: blur(14px); box-shadow: 0 2px 18px rgba(0,0,0,0.07);
+  text-align: center; min-width: 80px;
+}
+.timer-pill .pill-score { font-size: 34px; color: #888; line-height: 1.1; }
+.timer-pill.urgent .pill-score { color: #f07; }
+
+/* ── SCREENS ── */
+.screen {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.screen.hidden { display: none; }
+.frosted {
+  background: rgba(255,255,255,0.85); backdrop-filter: blur(20px);
+  border-radius: 32px; padding: 34px 36px;
+  max-width: 420px; width: 100%;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.09);
+  display: flex; flex-direction: column; align-items: center;
+}
+h1 { font-size: clamp(36px,10vw,64px); color: #555; margin-bottom: 6px; }
+.subtitle { font-size: clamp(13px,3.5vw,17px); color: rgba(0,0,0,0.32); margin-bottom: 22px; text-align: center; }
+
+.mode-row { display: flex; gap: 12px; width: 100%; margin-bottom: 18px; }
+.mode-btn {
+  flex: 1; border: 2px solid transparent; cursor: pointer; border-radius: 18px;
+  padding: 14px 10px; font-family: 'Fredoka One', cursive;
+  font-size: clamp(14px,4vw,18px); color: #666;
+  background: rgba(0,0,0,0.04); transition: all 0.15s;
+}
+.mode-btn:hover { background: rgba(200,120,230,0.1); border-color: rgba(200,120,230,0.3); }
+.mode-btn.selected { background: linear-gradient(135deg,rgba(200,120,230,0.15),rgba(100,150,240,0.15)); border-color: rgba(180,120,255,0.45); color: #a060c0; }
+.mode-icon { font-size: 26px; display: block; margin-bottom: 4px; }
+
+.name-row { display: flex; gap: 10px; width: 100%; margin-bottom: 18px; }
+.name-input {
+  flex: 1; border: 2px solid rgba(0,0,0,0.08); border-radius: 16px;
+  padding: 12px 16px; font-family: 'Fredoka One', cursive;
+  font-size: 18px; background: rgba(255,255,255,0.9);
+  outline: none; text-align: center; transition: border-color 0.2s;
+}
+.name-input:focus { border-color: rgba(180,120,255,0.5); }
+.name-input.p1 { color: #e06090; }
+.name-input.p2 { color: #6090e0; }
+
+#inviteBox {
+  width: 100%; background: rgba(180,120,255,0.07);
+  border-radius: 18px; padding: 14px 16px; margin-bottom: 18px; display: none;
+}
+#inviteBox.show { display: block; }
+.invite-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(0,0,0,0.3); margin-bottom: 8px; }
+#inviteLink {
+  width: 100%; font-size: 12px; padding: 9px 12px;
+  border-radius: 12px; border: 1.5px solid rgba(180,120,255,0.25);
+  background: rgba(255,255,255,0.9); color: #888;
+  font-family: 'Fredoka One', cursive;
+  word-break: break-all; margin-bottom: 10px;
+  cursor: text; outline: none; resize: none; height: 46px; overflow: hidden;
+}
+.copy-btn {
+  border: none; border-radius: 12px; padding: 8px 20px;
+  background: linear-gradient(135deg, #d49de0, #90b4f0);
+  color: #fff; font-family: 'Fredoka One', cursive;
+  font-size: 15px; cursor: pointer; width: 100%; transition: opacity 0.15s;
+}
+.copy-btn:active { opacity: 0.75; }
+
+.big-btn {
+  width: 100%; border: none; border-radius: 20px; padding: 17px;
+  font-family: 'Fredoka One', cursive; font-size: clamp(18px,5vw,22px); color: #fff;
+  background: linear-gradient(135deg, #d49de0, #90b4f0);
+  box-shadow: 0 4px 24px rgba(180,120,255,0.3);
+  cursor: pointer; transition: transform 0.1s, box-shadow 0.15s;
+}
+.big-btn:hover { transform: scale(1.03); box-shadow: 0 6px 32px rgba(180,120,255,0.4); }
+.big-btn:active { transform: scale(0.97); }
+.big-btn:disabled { opacity: 0.45; transform: none; cursor: default; }
+
+.waiting-dots span { display: inline-block; animation: blink 1.2s ease-in-out infinite; }
+.waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+.waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+.back-link { margin-top: 14px; font-size: 14px; color: rgba(0,0,0,0.25); cursor: pointer; }
+.back-link:hover { color: rgba(0,0,0,0.45); }
+
+/* end screen */
+.winner-badge { font-size: clamp(40px,12vw,72px); margin-bottom: 4px; }
+.winner-name  { font-size: clamp(24px,7vw,44px); margin-bottom: 4px; }
+.winner-wins  { font-size: clamp(13px,4vw,17px); color: rgba(0,0,0,0.3); margin-bottom: 18px; }
+.scores-row   { display: flex; gap: 14px; width: 100%; margin-bottom: 22px; }
+.score-card   { flex: 1; border-radius: 18px; padding: 14px 10px; text-align: center; background: rgba(0,0,0,0.03); }
+.score-card.winner-card { background: linear-gradient(135deg,rgba(212,157,224,0.2),rgba(144,180,240,0.2)); }
+.score-card-name { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px; }
+.score-card-val  { font-size: 40px; }
+.p1-card .score-card-name { color: rgba(224,96,144,0.6); }
+.p1-card .score-card-val  { color: #e06090; }
+.p2-card .score-card-name { color: rgba(96,144,224,0.6); }
+.p2-card .score-card-val  { color: #6090e0; }
+
+#youBanner {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(255,255,255,0.75); backdrop-filter: blur(12px);
+  border-radius: 50px; padding: 8px 22px; font-size: 14px; color: #6090e0;
+  z-index: 10; pointer-events: none; box-shadow: 0 2px 14px rgba(0,0,0,0.07); display: none;
+}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<!-- HUD -->
+<div id="hud" style="display:none">
+  <div class="player-pill p1-pill" id="p1Pill">
+    <div class="pill-name" id="p1HudName">You</div>
+    <div class="pill-score" id="p1HudScore">0</div>
+  </div>
+  <div class="timer-pill" id="timerPill">
+    <div class="pill-name">Time</div>
+    <div class="pill-score" id="timerVal">30</div>
+  </div>
+  <div class="player-pill p2-pill" id="p2Pill">
+    <div class="pill-name" id="p2HudName">Friend</div>
+    <div class="pill-score" id="p2HudScore">0</div>
+  </div>
+</div>
+<div id="youBanner"></div>
+
+<!-- ── START SCREEN ── -->
+<div class="screen" id="startScreen">
+  <div class="frosted">
+    <h1>🫧</h1>
+    <p class="subtitle">Pop bubbles before the Dino does! · 30 secs</p>
+    <div class="mode-row">
+      <button class="mode-btn selected" id="soloModeBtn" onclick="setMode('solo')">
+        <span class="mode-icon">🙋</span>Solo
+      </button>
+      <button class="mode-btn" id="duoModeBtn" onclick="setMode('duo')">
+        <span class="mode-icon">👯</span>vs Friend
+      </button>
+    </div>
+    <div class="name-row">
+      <input class="name-input p1" id="p1Name" maxlength="12" placeholder="Your name" value="Player 1">
+    </div>
+    <div id="inviteBox">
+      <div class="invite-label">📨 Share this link with your friend</div>
+      <textarea id="inviteLink" readonly></textarea>
+      <button class="copy-btn" onclick="copyLink()">Copy Link</button>
+    </div>
+    <button class="big-btn" id="startBtn">Let's Pop!</button>
+  </div>
+</div>
+
+<!-- ── HOST WAITING SCREEN (after clicking Let's Pop in duo mode) ── -->
+<div class="screen hidden" id="hostWaitScreen">
+  <div class="frosted">
+    <h1>🫧</h1>
+    <p class="subtitle" id="hostWaitTitle">Waiting for your friend…</p>
+    <div class="waiting-dots" id="hostWaitDots" style="font-size:28px;margin-bottom:20px;color:rgba(0,0,0,0.25)">
+      <span>.</span><span>.</span><span>.</span>
+    </div>
+    <button class="big-btn" id="hostStartBtn" style="display:none">🚀 Start Game!</button>
+    <div class="back-link" onclick="cancelWait()">← Back</div>
+  </div>
+</div>
+
+<!-- ── GUEST SCREEN (P2 opens invite link) ── -->
+<div class="screen hidden" id="guestScreen">
+  <div class="frosted">
+    <h1>🫧</h1>
+    <p class="subtitle">You're invited to play!</p>
+    <div class="name-row">
+      <input class="name-input p2" id="p2NameInput" maxlength="12" placeholder="Your name" value="Player 2">
+    </div>
+    <!-- State A: before confirming -->
+    <button class="big-btn" id="guestReadyBtn">I'm Ready! 🎉</button>
+    <!-- State B: after confirming, waiting for host -->
+    <div id="guestWaitMsg" style="display:none; text-align:center; color:rgba(0,0,0,0.35); font-size:clamp(13px,3.5vw,16px); margin-top:4px">
+      ✅ Joined! Waiting for host to start<br>
+      <span class="waiting-dots"><span>.</span><span>.</span><span>.</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── END SCREEN ── -->
+<div class="screen hidden" id="endScreen">
+  <div class="frosted">
+    <div class="winner-badge" id="winnerBadge">🏆</div>
+    <div class="winner-name"  id="winnerName">Player 1 wins!</div>
+    <div class="winner-wins"  id="winnerSub">Nice popping!</div>
+    <div class="scores-row">
+      <div class="score-card p1-card" id="p1Card">
+        <div class="score-card-name" id="p1CardName">P1</div>
+        <div class="score-card-val"  id="p1CardScore">0</div>
+      </div>
+      <div class="score-card p2-card" id="p2Card">
+        <div class="score-card-name" id="p2CardName">P2</div>
+        <div class="score-card-val"  id="p2CardScore">0</div>
+      </div>
+    </div>
+    <button class="big-btn" id="playAgainBtn">Pop Again!</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  MULTIPLAYER — BroadcastChannel (same-browser tabs /
+//  windows, e.g. two phones on same device, or desktop
+//  split-screen). Falls back gracefully for solo.
+// ══════════════════════════════════════════════════════
+
+const urlParams = new URLSearchParams(location.search);
+const ROOM_ID   = urlParams.get('room');
+const IS_GUEST  = urlParams.get('p2') === '1';
+
+let channel    = null;
+let mpMode     = 'solo';   // 'solo' | 'host' | 'guest'
+let p2Connected = false;
+let p2Score    = 0;
+let p2Name     = 'Friend';
+let p1Name_game = 'Player 1';
+let p1Score_remote = 0;
+let gameRoomId = null;
+let currentMode = 'solo';
+let gameOver_sent = false;
+
+function genRoomId() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
+
+function openChannel(roomId) {
+  if (typeof BroadcastChannel === 'undefined') return;
+  if (channel) { try { channel.close(); } catch(e){} }
+  channel = new BroadcastChannel('bubblepop_' + roomId);
+  channel.onmessage = handleMsg;
+}
+
+function send(type, payload = {}) {
+  if (channel) channel.postMessage({ type, ...payload });
+}
+
+// ── Message handler ────────────────────────────────────
+function handleMsg(e) {
+  const msg = e.data;
+  switch (msg.type) {
+
+    case 'p2_join':
+      // Host receives: guest has confirmed their name and is ready
+      p2Connected = true;
+      p2Name = msg.name || 'Friend';
+      if (mpMode === 'host') {
+        // Update the waiting screen to show p2 arrived + enable Start
+        document.getElementById('hostWaitTitle').textContent = `${p2Name} has joined! 🎉`;
+        document.getElementById('hostWaitDots').style.display = 'none';
+        document.getElementById('hostStartBtn').style.display = 'block';
+        send('p2_ack', { hostName: p1Name_game });
+      }
+      break;
+
+    case 'p2_ack':
+      // Guest receives: host acknowledged the join
+      if (mpMode === 'guest') {
+        document.getElementById('guestReadyBtn').style.display = 'none';
+        document.getElementById('guestWaitMsg').style.display = 'block';
+      }
+      break;
+
+    case 'game_start':
+      // Guest receives: host pressed Start
+      if (mpMode === 'guest') {
+        p1Name_game = msg.p1Name || 'Player 1';
+        p2Name      = msg.p2Name || 'Friend';
+        beginGame();
+      }
+      break;
+
+    case 'score_update':
+      if (msg.player === 'p1' && mpMode === 'guest') {
+        p1Score_remote = msg.score;
+        document.getElementById('p1HudScore').textContent = p1Score_remote;
+        updateLeader();
+      }
+      if (msg.player === 'p2' && mpMode === 'host') {
+        p2Score = msg.score;
+        document.getElementById('p2HudScore').textContent = p2Score;
+        updateLeader();
+      }
+      break;
+
+    case 'game_over':
+      if (mpMode === 'guest' && !gameOver_sent) {
+        p1Score_remote = msg.p1Score ?? p1Score_remote;
+        finaliseGame();
+      }
+      if (mpMode === 'host' && !gameOver_sent) {
+        p2Score = msg.p2Score ?? p2Score;
+        finaliseGame();
+      }
+      break;
+  }
+}
+
+// ── Mode selector ──────────────────────────────────────
+function setMode(m) {
+  currentMode = m;
+  document.getElementById('soloModeBtn').classList.toggle('selected', m === 'solo');
+  document.getElementById('duoModeBtn').classList.toggle('selected', m === 'duo');
+  const inviteBox = document.getElementById('inviteBox');
+  if (m === 'duo') {
+    gameRoomId = genRoomId();
+    const link = location.origin + location.pathname + '?room=' + gameRoomId + '&p2=1';
+    document.getElementById('inviteLink').value = link;
+    inviteBox.classList.add('show');
+    openChannel(gameRoomId);
+    mpMode = 'host';
+    p2Connected = false;
+  } else {
+    inviteBox.classList.remove('show');
+    mpMode = 'solo';
+    if (channel) { try { channel.close(); } catch(e){} channel = null; }
+  }
+}
+
+function getP1Name() {
+  return (document.getElementById('p1Name')?.value.trim()) || 'Player 1';
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(document.getElementById('inviteLink').value).catch(() => {});
+  const btn = document.querySelector('.copy-btn');
+  btn.textContent = '✅ Copied!';
+  setTimeout(() => { btn.textContent = 'Copy Link'; }, 2200);
+}
+
+function cancelWait() {
+  document.getElementById('hostWaitScreen').classList.add('hidden');
+  document.getElementById('startScreen').classList.remove('hidden');
+  mpMode = 'solo'; currentMode = 'solo';
+  if (channel) { try { channel.close(); } catch(e){} channel = null; }
+  setMode('solo');
+}
+
+// ── Boot: if this is the guest tab, skip start screen ──
+if (IS_GUEST && ROOM_ID) {
+  mpMode = 'guest';
+  openChannel(ROOM_ID);
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('guestScreen').classList.remove('hidden');
+}
+
+// ── Guest Ready button ─────────────────────────────────
+document.getElementById('guestReadyBtn').addEventListener('click', () => {
+  resumeAC();
+  p2Name = (document.getElementById('p2NameInput').value.trim()) || 'Player 2';
+  // Disable button to prevent double-send
+  document.getElementById('guestReadyBtn').disabled = true;
+  document.getElementById('guestReadyBtn').textContent = 'Sent! Waiting…';
+  send('p2_join', { name: p2Name });
+  // Optimistically show wait message in case ack is slow
+  setTimeout(() => {
+    if (document.getElementById('guestReadyBtn').style.display !== 'none') {
+      document.getElementById('guestWaitMsg').style.display = 'block';
+    }
+  }, 1500);
+});
+
+// ── Host Start button (in waitScreen) ─────────────────
+document.getElementById('hostStartBtn').addEventListener('click', () => {
+  p1Name_game = getP1Name();
+  send('game_start', { p1Name: p1Name_game, p2Name });
+  beginGame();
+});
+
+// ── Start button on main screen ───────────────────────
+document.getElementById('startBtn').addEventListener('click', () => {
+  p1Name_game = getP1Name();
+  resumeAC();
+  if (currentMode === 'duo') {
+    mpMode = 'host';
+    // Show host waiting screen
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('hostWaitScreen').classList.remove('hidden');
+    document.getElementById('hostWaitTitle').textContent = 'Waiting for your friend…';
+    document.getElementById('hostWaitDots').style.display = '';
+    document.getElementById('hostStartBtn').style.display = 'none';
+    // If p2 already connected before host clicked (race condition: guest was fast)
+    if (p2Connected) {
+      document.getElementById('hostWaitTitle').textContent = `${p2Name} has joined! 🎉`;
+      document.getElementById('hostWaitDots').style.display = 'none';
+      document.getElementById('hostStartBtn').style.display = 'block';
+    }
+  } else {
+    mpMode = 'solo';
+    beginGame();
+  }
+});
+
+// ── Play Again ────────────────────────────────────────
+document.getElementById('playAgainBtn').addEventListener('click', () => {
+  document.getElementById('endScreen').classList.add('hidden');
+  document.getElementById('hud').style.display = 'none';
+  if (mpMode === 'guest') {
+    // Guest goes back to their lobby, re-sends join so host knows they're ready again
+    document.getElementById('guestScreen').classList.remove('hidden');
+    document.getElementById('guestReadyBtn').disabled = false;
+    document.getElementById('guestReadyBtn').textContent = "I'm Ready! 🎉";
+    document.getElementById('guestReadyBtn').style.display = 'block';
+    document.getElementById('guestWaitMsg').style.display = 'none';
+  } else if (mpMode === 'host') {
+    document.getElementById('hostWaitScreen').classList.remove('hidden');
+    document.getElementById('hostWaitTitle').textContent = 'Waiting for your friend…';
+    document.getElementById('hostWaitDots').style.display = '';
+    document.getElementById('hostStartBtn').style.display = 'none';
+    p2Connected = false;
+  } else {
+    document.getElementById('startScreen').classList.remove('hidden');
+  }
+});
+
+// ══════════════════════════════════════════════════════
+//  CANVAS + AUDIO + GAME
+// ══════════════════════════════════════════════════════
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize);
+resize();
+
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+function resumeAC() { if (AC.state === 'suspended') AC.resume(); }
+
+function playPop(r) {
+  resumeAC();
+  const freq = 600 + (1 - Math.min(r, 60) / 60) * 500;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(freq, AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(freq * 0.25, AC.currentTime + 0.12);
+  g.gain.setValueAtTime(0.18, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.14);
+  o.start(); o.stop(AC.currentTime + 0.15);
+}
+function playTick() {
+  resumeAC();
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.type = 'sine'; o.frequency.value = 900;
+  g.gain.setValueAtTime(0.08, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.06);
+  o.start(); o.stop(AC.currentTime + 0.07);
+}
+
+const PALETTE = [
+  [200,88,190], [330,88,320], [280,88,270],
+  [160,85,155], [40,88,35],   [60,86,55],
+];
+
+let score = 0, timeLeft = 30, running = false;
+let bubbles = [], pops = [];
+let lastTime = 0, timerAcc = 0, spawnTimer = 0;
+
+function spawnBubble() {
+  const pal = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+  const r   = 28 + Math.random() * 38;
+  let x, y, vx, vy;
+  const edge = Math.floor(Math.random() * 4);
+  const speed = 65 + Math.random() * 80;
+  const spread = (Math.random() - 0.5) * 1.1;
+  switch (edge) {
+    case 0: x = r + Math.random()*(W-r*2); y = -r;    vx = Math.cos(Math.PI/2+spread)*speed;  vy = Math.abs(Math.sin(Math.PI/2+spread)*speed); break;
+    case 1: x = W+r; y = r+Math.random()*(H-r*2);     vx = -Math.abs(Math.cos(spread)*speed); vy = Math.sin(spread)*speed; break;
+    case 2: x = r + Math.random()*(W-r*2); y = H+r;   vx = Math.cos(-Math.PI/2+spread)*speed; vy = -Math.abs(Math.sin(-Math.PI/2+spread)*speed); break;
+    case 3: x = -r; y = r+Math.random()*(H-r*2);      vx = Math.abs(Math.cos(spread)*speed);  vy = Math.sin(spread)*speed; break;
+  }
+  return {
+    x, y, r, pal, vx, vy,
+    wobble: Math.random()*Math.PI*2, wobbleSpeed: 0.7+Math.random()*0.9,
+    sway: (Math.random()-0.5)*22, swayPhase: Math.random()*Math.PI*2, swaySpeed: 0.5+Math.random()*0.9,
+    life: 0, maxLife: 3.5+Math.random()*2.5, alpha: 0, dead: false,
+  };
+}
+
+function drawBubble(b) {
+  const { x, y, r, pal, wobble, alpha } = b;
+  const [fh, fl, rh] = pal;
+  const rx = r + Math.sin(wobble)*r*0.04;
+  const ry = r + Math.cos(wobble*0.8)*r*0.04;
+  ctx.save(); ctx.globalAlpha = alpha;
+  const body = ctx.createRadialGradient(x-rx*.28, y-ry*.28, rx*.04, x, y, rx);
+  body.addColorStop(0,   `hsla(${fh},80%,${fl}%,0.22)`);
+  body.addColorStop(0.7, `hsla(${fh},70%,${fl-10}%,0.10)`);
+  body.addColorStop(1,   `hsla(${fh},75%,${fl-15}%,0.20)`);
+  ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();
+  const rim = ctx.createLinearGradient(x-rx,y-ry,x+rx,y+ry);
+  rim.addColorStop(0,   `hsla(${rh},90%,72%,0.85)`);
+  rim.addColorStop(0.3, `hsla(${(rh+60)%360},95%,78%,0.65)`);
+  rim.addColorStop(0.6, `hsla(${(rh+130)%360},90%,74%,0.80)`);
+  rim.addColorStop(1,   `hsla(${(rh+200)%360},90%,72%,0.75)`);
+  ctx.strokeStyle = rim; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.stroke();
+  const hl = ctx.createRadialGradient(x-rx*.32,y-ry*.36,0,x-rx*.32,y-ry*.36,rx*.34);
+  hl.addColorStop(0,'rgba(255,255,255,0.80)'); hl.addColorStop(.45,'rgba(255,255,255,0.22)'); hl.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle = hl; ctx.beginPath(); ctx.ellipse(x-rx*.32,y-ry*.36,rx*.34,ry*.24,-0.4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.arc(x+rx*.40,y+ry*.36,rx*.08,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawPop(p) {
+  const t = p.life / p.maxLife;
+  ctx.save(); ctx.globalAlpha = (1-t)*0.8;
+  ctx.strokeStyle = `hsla(${p.hue},80%,70%,1)`; ctx.lineWidth = 2*(1-t);
+  ctx.beginPath(); ctx.arc(p.x,p.y,p.startR+p.startR*1.4*t,0,Math.PI*2); ctx.stroke();
+  p.drops.forEach(d => {
+    ctx.globalAlpha = (1-t)*0.7;
+    ctx.fillStyle = `hsla(${p.hue},75%,72%,1)`;
+    ctx.beginPath(); ctx.arc(p.x+d.vx*t*80, p.y+d.vy*t*80+60*t*t, d.r*(1-t*0.6), 0, Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+}
+
+function loop(ts) {
+  const dt = Math.min((ts-lastTime)/1000, 0.05);
+  lastTime = ts;
+
+  if (running) {
+    timerAcc += dt;
+    if (timerAcc >= 1) {
+      timerAcc -= 1; timeLeft = Math.max(0, timeLeft-1);
+      updateTimerUI();
+      if (timeLeft <= 10 && timeLeft > 0) playTick();
+      if (timeLeft === 0) { finaliseGame(); return; }
+    }
+    const spawnRate = 0.85 - (30-timeLeft)/30*0.40;
+    spawnTimer += dt;
+    if (spawnTimer >= spawnRate) {
+      spawnTimer = 0; bubbles.push(spawnBubble());
+      if (timeLeft < 20 && Math.random() < 0.28) bubbles.push(spawnBubble());
+    }
+  }
+
+  bubbles.forEach(b => {
+    if (b.dead) return;
+    b.life += dt; b.wobble += b.wobbleSpeed*dt;
+    b.x += b.vx*dt + Math.sin(b.swayPhase+b.life*b.swaySpeed)*0.5;
+    b.y += b.vy*dt;
+    b.vx *= 1-0.18*dt; b.vy *= 1-0.18*dt;
+    const fi = Math.min(b.life/0.3,1);
+    const fo = b.life > b.maxLife-0.6 ? (b.maxLife-b.life)/0.6 : 1;
+    b.alpha = fi*fo;
+    const off = b.x<-b.r*3||b.x>W+b.r*3||b.y<-b.r*3||b.y>H+b.r*3;
+    if (b.life>=b.maxLife||off) b.dead=true;
+  });
+  bubbles = bubbles.filter(b=>!b.dead);
+  pops.forEach(p=>{p.life+=dt;});
+  pops = pops.filter(p=>p.life<p.maxLife);
+
+  ctx.clearRect(0,0,W,H);
+  updateDino(dt);
+  bubbles.forEach(drawBubble);
+  pops.forEach(drawPop);
+  if (running && mpMode==='solo') drawDino(ts/1000);
+  requestAnimationFrame(loop);
+}
+
+function tryPop(cx, cy) {
+  if (!running) return;
+  let hit = null;
+  for (let i = bubbles.length-1; i >= 0; i--) {
+    const b = bubbles[i];
+    if (b.dead) continue;
+    const dx = cx-b.x, dy = cy-b.y;
+    if (dx*dx+dy*dy <= b.r*b.r) { hit = b; break; }
+  }
+  if (!hit) return;
+  hit.dead = true; score++;
+  playPop(hit.r);
+  if (navigator.vibrate) navigator.vibrate(12);
+  const myEl = mpMode==='guest' ? 'p2HudScore' : 'p1HudScore';
+  document.getElementById(myEl).textContent = score;
+  updateLeader();
+  if (mpMode==='host')  send('score_update', { player:'p1', score });
+  if (mpMode==='guest') send('score_update', { player:'p2', score });
+  const drops = [];
+  const n = 8+Math.floor(Math.random()*5);
+  for (let i=0;i<n;i++) {
+    const ang = (Math.PI*2*i)/n+Math.random()*0.5;
+    drops.push({vx:Math.cos(ang),vy:Math.sin(ang),r:2.5+Math.random()*3});
+  }
+  pops.push({x:hit.x,y:hit.y,startR:hit.r,hue:hit.pal[0],drops,life:0,maxLife:0.5});
+}
+
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); resumeAC(); tryPop(e.clientX,e.clientY); });
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault(); resumeAC();
+  for (const t of e.changedTouches) tryPop(t.clientX,t.clientY);
+}, { passive: false });
+
+function updateTimerUI() {
+  document.getElementById('timerVal').textContent = timeLeft;
+  document.getElementById('timerPill').classList.toggle('urgent', timeLeft<=10);
+}
+function updateLeader() {
+  const mine = score;
+  const opp  = mpMode==='guest' ? p1Score_remote : p2Score;
+  document.getElementById('p1Pill').classList.toggle('leading', mpMode==='guest' ? p1Score_remote>=mine : mine>=opp);
+  document.getElementById('p2Pill').classList.toggle('leading', mpMode==='guest' ? mine>=p1Score_remote : p2Score>=mine);
+}
+
+function beginGame() {
+  score=0; p2Score=0; p1Score_remote=0;
+  timeLeft=30; timerAcc=0; spawnTimer=0;
+  running=true; gameOver_sent=false;
+  bubbles=[]; pops=[];
+  document.getElementById('p1HudName').textContent  = p1Name_game;
+  document.getElementById('p2HudName').textContent  = mpMode==='solo' ? '—' : p2Name;
+  document.getElementById('p1HudScore').textContent = '0';
+  document.getElementById('p2HudScore').textContent = '0';
+  if (mpMode==='guest') {
+    document.getElementById('youBanner').textContent = `You are ${p2Name} 💙`;
+    document.getElementById('youBanner').style.display = 'block';
+  } else {
+    document.getElementById('youBanner').style.display = 'none';
+  }
+  if (mpMode === 'solo') initDino();
+  document.getElementById('hud').style.display = 'flex';
+  ['startScreen','hostWaitScreen','guestScreen','endScreen'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  updateTimerUI(); resumeAC();
+}
+
+function finaliseGame() {
+  running=false;
+  document.getElementById('youBanner').style.display='none';
+  if (!gameOver_sent) {
+    gameOver_sent=true;
+    if (mpMode==='host')  send('game_over',{p1Score:score, p2Score});
+    if (mpMode==='guest') send('game_over',{p2Score:score, p1Score:p1Score_remote});
+  }
+  let s1,s2,n1,n2;
+  if (mpMode==='guest') { s1=p1Score_remote; s2=score; n1=p1Name_game; n2=p2Name; }
+  else { s1=score; s2=(mpMode==='solo')?null:p2Score; n1=p1Name_game; n2=(mpMode==='solo')?null:p2Name; }
+  document.getElementById('p1CardName').textContent  = n1;
+  document.getElementById('p1CardScore').textContent = s1;
+  if (s2!==null) {
+    document.getElementById('p2Card').style.display='';
+    document.getElementById('p2CardName').textContent  = n2;
+    document.getElementById('p2CardScore').textContent = s2;
+    document.getElementById('p1Card').classList.toggle('winner-card', s1>=s2);
+    document.getElementById('p2Card').classList.toggle('winner-card', s2>s1);
+    if (s1===s2) {
+      document.getElementById('winnerBadge').textContent='🤝';
+      document.getElementById('winnerName').textContent="It's a tie!";
+      document.getElementById('winnerSub').textContent=`Both popped ${s1} bubbles`;
+    } else {
+      const w=s1>s2?n1:n2, d=Math.abs(s1-s2);
+      document.getElementById('winnerBadge').textContent='🏆';
+      document.getElementById('winnerName').textContent=`${w} wins!`;
+      document.getElementById('winnerSub').textContent=`by ${d} bubble${d!==1?'s':''}`;
+    }
+  } else {
+    document.getElementById('p2Card').style.display='none';
+    document.getElementById('p1Card').classList.add('winner-card');
+    document.getElementById('winnerBadge').textContent='🫧';
+    document.getElementById('winnerName').textContent=`${s1} bubbles!`;
+    document.getElementById('winnerSub').textContent=`Nice popping! Dino stole ${dino.stolen} 🦕`;
+  }
+  document.getElementById('hud').style.display='none';
+  document.getElementById('endScreen').classList.remove('hidden');
+}
+
+
+// ══════════════════════════════════════════════════
+//  DINO — T-Rex swimmer, solo mode bubble thief
+// ══════════════════════════════════════════════════
+
+const dino = {
+  x: 0, y: 0,
+  vx: 0, vy: 0,
+  target: null,
+  state: 'chase',   // always chasing — no wander idle
+  popTimer: 0,
+  swimPhase: 0,     // body undulation cycle
+  mouthOpen: 0,     // 0=closed 1=open
+  eyeBlink: 3,
+  stolen: 0,
+  facing: 1,        // 1=right -1=left
+};
+
+// Speed: starts aggressive, ramps to very fast
+function dinoSpeed() {
+  const elapsed = 30 - timeLeft;
+  return 160 + elapsed * 5.5;  // 160 → 325 px/s
+}
+
+function initDino() {
+  dino.x = W * 0.5;
+  dino.y = H * 0.5;
+  dino.vx = 0; dino.vy = 0;
+  dino.target = null;
+  dino.state = 'chase';
+  dino.swimPhase = 0;
+  dino.mouthOpen = 0;
+  dino.eyeBlink = 3;
+  dino.stolen = 0;
+  dino.popTimer = 0;
+  dino.facing = 1;
+}
+
+function updateDino(dt) {
+  if (!running || mpMode !== 'solo') return;
+
+  dino.swimPhase += dt * 5;
+  dino.eyeBlink -= dt;
+  if (dino.eyeBlink <= 0) dino.eyeBlink = 2 + Math.random() * 2.5;
+
+  // Pop state — brief pause after snapping a bubble
+  if (dino.state === 'pop') {
+    dino.mouthOpen = Math.max(0, dino.mouthOpen - dt * 4);
+    dino.popTimer -= dt;
+    if (dino.popTimer <= 0) {
+      dino.state = 'chase';
+      dino.target = null;
+    }
+    return;
+  }
+
+  // Always re-acquire closest bubble
+  if (!dino.target || dino.target.dead) {
+    let best = null, bestDist = Infinity;
+    bubbles.forEach(b => {
+      if (b.dead) return;
+      const dx = b.x - dino.x, dy = b.y - dino.y;
+      const d = dx*dx + dy*dy;
+      if (d < bestDist) { bestDist = d; best = b; }
+    });
+    dino.target = best;
+  }
+
+  if (!dino.target) return;
+
+  const dx = dino.target.x - dino.x;
+  const dy = dino.target.y - dino.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const spd = dinoSpeed();
+
+  // Open mouth when close
+  dino.mouthOpen = dist < 90 ? Math.min(1, dino.mouthOpen + dt * 6) : Math.max(0, dino.mouthOpen - dt * 3);
+
+  dino.facing = dx >= 0 ? 1 : -1;
+
+  if (dist < 22) {
+    // SNAP — eat bubble
+    dino.target.dead = true;
+    dino.stolen++;
+    const drops = [];
+    for (let i = 0; i < 12; i++) {
+      const ang = Math.PI*2*i/12 + Math.random()*0.4;
+      drops.push({vx:Math.cos(ang), vy:Math.sin(ang), r:2+Math.random()*3});
+    }
+    pops.push({x:dino.target.x, y:dino.target.y, startR:dino.target.r, hue:dino.target.pal[0], drops, life:0, maxLife:0.45});
+    playDinoSnap();
+    dino.state = 'pop';
+    dino.popTimer = 0.35;
+    dino.mouthOpen = 1;
+  } else {
+    dino.vx = (dx / dist) * spd;
+    dino.vy = (dy / dist) * spd;
+    dino.x += dino.vx * dt;
+    dino.y += dino.vy * dt;
+  }
+}
+
+function playDinoSnap() {
+  resumeAC();
+  // Sharp chomp: quick downward sweep
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(220, AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(55, AC.currentTime + 0.12);
+  g.gain.setValueAtTime(0.28, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.15);
+  o.start(); o.stop(AC.currentTime + 0.16);
+}
+
+function drawDino(t) {
+  if (mpMode !== 'solo') return;
+
+  const { x, y, swimPhase, mouthOpen, eyeBlink, facing, state } = dino;
+
+  // Swimming undulation — whole body tilts like a fish/croc swimming
+  const swimTilt  = Math.sin(swimPhase) * 0.18;           // body rock
+  const tailSwing = Math.sin(swimPhase + 0.6) * 0.35;     // tail lags body
+  const bodyOff   = Math.sin(swimPhase * 2) * 2.5;        // vertical bob
+
+  const blink = eyeBlink < 0.13;
+
+  ctx.save();
+  ctx.translate(x, y + bodyOff);
+  ctx.rotate(swimTilt * facing);
+
+  // ── Wake ripples (motion lines behind body) ──
+  if (state !== 'pop') {
+    for (let i = 1; i <= 3; i++) {
+      const rx = -facing * (28 + i * 14);
+      const ry = Math.sin(swimPhase + i) * 4;
+      ctx.save();
+      ctx.globalAlpha = 0.12 - i * 0.03;
+      ctx.strokeStyle = '#4a9fd4';
+      ctx.lineWidth = 3 - i * 0.5;
+      ctx.beginPath();
+      ctx.arc(rx, ry, 8 + i * 4, -Math.PI*0.4, Math.PI*0.4);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  ctx.scale(facing, 1);   // all geometry drawn facing RIGHT; flip for left
+
+  // ─── TAIL ───────────────────────────────────────
+  // T-Rex tail: thick at base, tapers, sweeps side to side
+  ctx.save();
+  ctx.translate(-28, 2);
+  ctx.rotate(-tailSwing);
+  // Main tail shaft
+  ctx.beginPath();
+  ctx.moveTo(0, -6);
+  ctx.quadraticCurveTo(-22, -4 + tailSwing*14, -52, 0);
+  ctx.quadraticCurveTo(-22,  4 + tailSwing*14,  0,  6);
+  ctx.closePath();
+  ctx.fillStyle = '#3d8b3d';
+  ctx.fill();
+  // Tail tip continuation
+  ctx.beginPath();
+  ctx.moveTo(-50, -3);
+  ctx.quadraticCurveTo(-68, -2 + tailSwing*20, -80, 2);
+  ctx.quadraticCurveTo(-68,  4 + tailSwing*20, -50,  3);
+  ctx.closePath();
+  ctx.fillStyle = '#347a34';
+  ctx.fill();
+  ctx.restore();
+
+  // ─── BODY ────────────────────────────────────────
+  // Chunky barrel torso — T-Rex is big in the middle
+  const bodyGrad = ctx.createLinearGradient(-20, -18, 10, 18);
+  bodyGrad.addColorStop(0, '#5dc45d');
+  bodyGrad.addColorStop(0.5, '#4aaf4a');
+  bodyGrad.addColorStop(1, '#3a8f3a');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 2, 26, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Belly/underbelly lighter patch
+  ctx.fillStyle = 'rgba(200,240,200,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(4, 7, 14, 11, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Dorsal ridge bumps along the back (top)
+  ctx.fillStyle = '#3a8f3a';
+  [-8, 0, 8, 16].forEach((bx, i) => {
+    const bh = 5 - i * 0.5;
+    ctx.beginPath();
+    ctx.ellipse(bx - 6, -18 - Math.sin(swimPhase + i * 0.5) * 1.5, 4, bh, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // ─── TINY T-REX ARMS ─────────────────────────────
+  // Famously useless — tiny, held close to chest
+  [-1, 1].forEach((side, i) => {
+    ctx.save();
+    ctx.translate(14, -4 + side * 5);
+    const armAngle = (mouthOpen > 0.5 ? -0.8 : -0.3) + side * 0.2;
+    ctx.rotate(armAngle);
+    ctx.fillStyle = '#4aaf4a';
+    // upper arm — very short
+    ctx.beginPath(); ctx.roundRect(-3, 0, 6, 9, 3); ctx.fill();
+    // tiny claw
+    ctx.fillStyle = '#3a8f3a';
+    ctx.beginPath(); ctx.arc(0, 10, 4, 0, Math.PI * 2); ctx.fill();
+    // two little claws
+    ctx.fillStyle = '#2d6f2d';
+    ctx.beginPath(); ctx.arc(-2, 13, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(2, 13, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  });
+
+  // ─── NECK ─────────────────────────────────────────
+  ctx.fillStyle = '#4aaf4a';
+  ctx.beginPath();
+  ctx.moveTo(16, -14);
+  ctx.quadraticCurveTo(28, -20, 32, -10);
+  ctx.quadraticCurveTo(28, -2, 20, 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // ─── HEAD ─────────────────────────────────────────
+  ctx.save();
+  ctx.translate(36, -16);
+
+  // Skull — elongated T-Rex head, wide at back narrow at snout
+  const headGrad = ctx.createLinearGradient(-8, -8, 20, 8);
+  headGrad.addColorStop(0, '#5dc45d');
+  headGrad.addColorStop(1, '#4aaf4a');
+  ctx.fillStyle = headGrad;
+  ctx.beginPath();
+  ctx.moveTo(-10, -8);
+  ctx.quadraticCurveTo(0, -14, 18, -6);   // top of skull
+  ctx.lineTo(28, -2);                       // snout top
+  ctx.lineTo(28,  4);                       // snout tip
+  ctx.lineTo(10,  8);                       // lower jaw front
+  ctx.quadraticCurveTo(-2, 10, -10, 6);    // lower jaw back
+  ctx.closePath();
+  ctx.fill();
+
+  // ─── JAW (opens/closes) ─────────────────────────
+  const jawAngle = mouthOpen * 0.52;   // max ~30deg open
+  ctx.save();
+  ctx.translate(4, 6);
+  ctx.rotate(jawAngle);
+  ctx.fillStyle = '#3d8b3d';
+  ctx.beginPath();
+  ctx.moveTo(-14, 0);
+  ctx.quadraticCurveTo(0, 2, 22, 0);
+  ctx.quadraticCurveTo(10, 10, -4, 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Teeth on lower jaw
+  if (mouthOpen > 0.1) {
+    ctx.fillStyle = '#f5f5dc';
+    [0, 5, 10, 15].forEach(tx => {
+      const th = 3 + mouthOpen * 3;
+      ctx.beginPath();
+      ctx.moveTo(tx, 0);
+      ctx.lineTo(tx + 2.5, -th);
+      ctx.lineTo(tx + 5, 0);
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
+  ctx.restore();
+
+  // Upper teeth (fixed to skull)
+  if (mouthOpen > 0.1) {
+    ctx.fillStyle = '#f5f5dc';
+    [6, 11, 16, 21].forEach(tx => {
+      const th = 3 + mouthOpen * 4;
+      ctx.beginPath();
+      ctx.moveTo(tx, 0);
+      ctx.lineTo(tx + 2.5, th);
+      ctx.lineTo(tx + 5, 0);
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
+
+  // Inside mouth — red when open
+  if (mouthOpen > 0.2) {
+    ctx.save();
+    ctx.globalAlpha = mouthOpen * 0.7;
+    ctx.fillStyle = '#d44';
+    ctx.beginPath();
+    ctx.moveTo(4, 2);
+    ctx.lineTo(26, 0);
+    ctx.lineTo(26, jawAngle * 18);
+    ctx.quadraticCurveTo(14, jawAngle * 22, 4, 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Eye ──
+  // T-Rex eye: set back on skull, small and fierce
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(2, -6, 5, blink ? 1 : 5, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  if (!blink) {
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.arc(3, -7, 2.8, 0, Math.PI * 2); ctx.fill();
+    // yellow iris ring
+    ctx.strokeStyle = '#c8a000';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(3, -7, 2.8, 0, Math.PI * 2); ctx.stroke();
+    // pupil shine
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(4, -8, 1, 0, Math.PI * 2); ctx.fill();
+    // angry brow ridge
+    ctx.strokeStyle = '#2d6f2d';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-2, -11);
+    ctx.lineTo(6, -10);
+    ctx.stroke();
+  }
+
+  // Nostril (near snout)
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(22, -4, 2, 1.2, -0.3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore(); // head
+
+  // ─── HIND LEGS (vestigial swimming fin/legs) ──────
+  // T-Rex had big powerful hind legs — shown as fins/paddles while swimming
+  [-6, 6].forEach((side, i) => {
+    const legSwing = Math.sin(swimPhase + i * Math.PI) * 0.4;
+    ctx.save();
+    ctx.translate(-10, 14 + side * 0.5);
+    ctx.rotate(legSwing + 0.3);
+    ctx.fillStyle = '#3d8b3d';
+    // thigh
+    ctx.beginPath(); ctx.ellipse(0, 0, 8, 5, 0.3, 0, Math.PI * 2); ctx.fill();
+    // shin
+    ctx.beginPath(); ctx.ellipse(10, 4, 6, 4, 0.6, 0, Math.PI * 2); ctx.fill();
+    // foot/claw pad
+    ctx.fillStyle = '#2d6f2d';
+    ctx.beginPath(); ctx.ellipse(17, 7, 8, 4, 0.8, 0, Math.PI * 2); ctx.fill();
+    // three toe claws
+    ctx.fillStyle = '#1d4f1d';
+    [-2, 0, 4].forEach(cx => {
+      ctx.beginPath();
+      ctx.moveTo(17+cx, 9);
+      ctx.lineTo(20+cx, 14);
+      ctx.lineTo(22+cx, 9);
+      ctx.closePath(); ctx.fill();
+    });
+    ctx.restore();
+  });
+
+  ctx.restore(); // facing scale + swim tilt + translate
+
+  // ── Speech bubble when snapping ──
+  if (state === 'pop') {
+    const msgs = ['CHOMP!', 'MINE!', 'RAWR!', 'NOM!'];
+    const msg = msgs[dino.stolen % msgs.length];
+    const bx = x + facing * 60;
+    const by = y - 55 + bodyOff;
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.93)';
+    ctx.beginPath(); ctx.roundRect(bx - 30, by - 16, 62, 28, 10); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(bx - facing*10, by + 12);
+    ctx.lineTo(bx - facing*20, by + 22);
+    ctx.lineTo(bx + facing*2,  by + 12);
+    ctx.closePath(); ctx.fill();
+    ctx.font = 'bold 14px "Fredoka One", cursive';
+    ctx.fillStyle = '#c03030';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(msg, bx + 1, by - 2);
+    ctx.restore();
+  }
+
+  // ── Dino score below ──
+  ctx.save();
+  ctx.font = '13px "Fredoka One", cursive';
+  ctx.fillStyle = 'rgba(50,130,50,0.85)';
+  ctx.textAlign = 'center';
+  ctx.fillText(`🦖 ${dino.stolen}`, x, y + 38 + bodyOff);
+  ctx.restore();
+}
+
+lastTime = performance.now();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
