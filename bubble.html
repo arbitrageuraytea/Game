@@ -137,6 +137,27 @@ h1 { font-size: clamp(36px,10vw,64px); color: #555; margin-bottom: 6px; }
 .p2-card .score-card-name { color: rgba(96,144,224,0.6); }
 .p2-card .score-card-val  { color: #6090e0; }
 
+/* Dino HUD pill — solo only */
+#dinoPill {
+  background: rgba(255,255,255,0.75); border-radius: 20px; padding: 10px 18px;
+  backdrop-filter: blur(14px); box-shadow: 0 2px 18px rgba(0,0,0,0.07);
+  min-width: 100px; flex: 1; border: 2px solid transparent;
+  transition: border-color 0.3s, box-shadow 0.3s; text-align: right; display: none;
+}
+#dinoPill.winning {
+  border-color: rgba(60,160,60,0.55);
+  box-shadow: 0 2px 22px rgba(60,160,60,0.22);
+}
+#dinoPill .pill-name { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(0,0,0,0.3); }
+#dinoPill .pill-score { font-size: 34px; color: #3d9e3d; line-height: 1.1; }
+
+/* Dino best record pill on end screen */
+.dino-record {
+  font-size: 12px; color: rgba(60,140,60,0.7);
+  margin-top: -12px; margin-bottom: 18px;
+  font-family: "Fredoka One", cursive; letter-spacing: 0.5px;
+}
+
 #youBanner {
   position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: rgba(255,255,255,0.75); backdrop-filter: blur(12px);
@@ -162,6 +183,10 @@ h1 { font-size: clamp(36px,10vw,64px); color: #555; margin-bottom: 6px; }
   <div class="player-pill p2-pill" id="p2Pill">
     <div class="pill-name" id="p2HudName">Friend</div>
     <div class="pill-score" id="p2HudScore">0</div>
+  </div>
+  <div id="dinoPill">
+    <div class="pill-name">🦖 Dino</div>
+    <div class="pill-score" id="dinoHudScore">0</div>
   </div>
 </div>
 <div id="youBanner"></div>
@@ -228,6 +253,7 @@ h1 { font-size: clamp(36px,10vw,64px); color: #555; margin-bottom: 6px; }
     <div class="winner-badge" id="winnerBadge">🏆</div>
     <div class="winner-name"  id="winnerName">Player 1 wins!</div>
     <div class="winner-wins"  id="winnerSub">Nice popping!</div>
+    <div class="dino-record hidden" id="dinoRecord"></div>
     <div class="scores-row">
       <div class="score-card p1-card" id="p1Card">
         <div class="score-card-name" id="p1CardName">P1</div>
@@ -497,6 +523,7 @@ const PALETTE = [
 ];
 
 let score = 0, timeLeft = 30, running = false;
+let dinoBest = 0; // all-time best dino stolen count
 let bubbles = [], pops = [];
 let lastTime = 0, timerAcc = 0, spawnTimer = 0;
 
@@ -569,7 +596,7 @@ function loop(ts) {
       timerAcc -= 1; timeLeft = Math.max(0, timeLeft-1);
       updateTimerUI();
       if (timeLeft <= 10 && timeLeft > 0) playTick();
-      if (timeLeft === 0) { finaliseGame(); return; }
+      if (timeLeft === 0) { finaliseGame(); }
     }
     const spawnRate = 0.85 - (30-timeLeft)/30*0.40;
     spawnTimer += dt;
@@ -650,7 +677,7 @@ function updateLeader() {
 function beginGame() {
   score=0; p2Score=0; p1Score_remote=0;
   timeLeft=30; timerAcc=0; spawnTimer=0;
-  running=true; gameOver_sent=false;
+  running=true; gameOver_sent=false; lastTime=performance.now();
   bubbles=[]; pops=[];
   document.getElementById('p1HudName').textContent  = p1Name_game;
   document.getElementById('p2HudName').textContent  = mpMode==='solo' ? '—' : p2Name;
@@ -662,7 +689,16 @@ function beginGame() {
   } else {
     document.getElementById('youBanner').style.display = 'none';
   }
-  if (mpMode === 'solo') initDino();
+  if (mpMode === 'solo') {
+    initDino();
+    document.getElementById('dinoPill').style.display = 'block';
+    document.getElementById('dinoHudScore').textContent = '0';
+    document.getElementById('dinoPill').classList.remove('winning');
+    document.getElementById('p2Pill').style.display = 'none';
+  } else {
+    document.getElementById('dinoPill').style.display = 'none';
+    document.getElementById('p2Pill').style.display = 'block';
+  }
   document.getElementById('hud').style.display = 'flex';
   ['startScreen','hostWaitScreen','guestScreen','endScreen'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   updateTimerUI(); resumeAC();
@@ -679,6 +715,8 @@ function finaliseGame() {
   let s1,s2,n1,n2;
   if (mpMode==='guest') { s1=p1Score_remote; s2=score; n1=p1Name_game; n2=p2Name; }
   else { s1=score; s2=(mpMode==='solo')?null:p2Score; n1=p1Name_game; n2=(mpMode==='solo')?null:p2Name; }
+  document.getElementById('dinoRecord').classList.add('hidden');
+  document.getElementById('p2CardScore').style.color = '';
   document.getElementById('p1CardName').textContent  = n1;
   document.getElementById('p1CardScore').textContent = s1;
   if (s2!==null) {
@@ -702,7 +740,30 @@ function finaliseGame() {
     document.getElementById('p1Card').classList.add('winner-card');
     document.getElementById('winnerBadge').textContent='🫧';
     document.getElementById('winnerName').textContent=`${s1} bubbles!`;
-    document.getElementById('winnerSub').textContent=`Nice popping! Dino stole ${dino.stolen} 🦕`;
+    // Check if dino wins (stole > half of player's score)
+    const dinoWins = score > 0 && dino.stolen > score / 2;
+    const dinoTie  = score > 0 && dino.stolen === Math.floor(score / 2) && score % 2 !== 0 ? false : dino.stolen === score / 2;
+    if (dinoWins) {
+      document.getElementById('winnerBadge').textContent = '🦖';
+      document.getElementById('winnerName').textContent  = 'Dino wins!';
+      document.getElementById('winnerSub').textContent   = `Stole ${dino.stolen} vs your ${s1} — RAWR!`;
+    } else {
+      document.getElementById('winnerBadge').textContent = '🎉';
+      document.getElementById('winnerName').textContent  = `You win!`;
+      document.getElementById('winnerSub').textContent   = `${s1} popped · Dino only got ${dino.stolen}`;
+    }
+    // Update dino best record
+    if (dino.stolen > dinoBest) dinoBest = dino.stolen;
+    const recEl = document.getElementById('dinoRecord');
+    recEl.textContent = `🦖 Dino's best: ${dinoBest} bubbles`;
+    recEl.classList.remove('hidden');
+    // Show dino score card instead of p2
+    document.getElementById('p2Card').style.display = '';
+    document.getElementById('p2CardName').textContent  = '🦖 Dino';
+    document.getElementById('p2CardScore').textContent = dino.stolen;
+    document.getElementById('p2CardScore').style.color = dinoWins ? '#3d9e3d' : '#aaa';
+    document.getElementById('p1Card').classList.toggle('winner-card', !dinoWins);
+    document.getElementById('p2Card').classList.toggle('winner-card', dinoWins);
   }
   document.getElementById('hud').style.display='none';
   document.getElementById('endScreen').classList.remove('hidden');
@@ -792,6 +853,11 @@ function updateDino(dt) {
     // SNAP — eat bubble
     dino.target.dead = true;
     dino.stolen++;
+    // Update dino HUD pill
+    const dp = document.getElementById('dinoHudScore');
+    if (dp) dp.textContent = dino.stolen;
+    const dpill = document.getElementById('dinoPill');
+    if (dpill) dpill.classList.toggle('winning', score > 0 && dino.stolen > score / 2);
     const drops = [];
     for (let i = 0; i < 12; i++) {
       const ang = Math.PI*2*i/12 + Math.random()*0.4;
